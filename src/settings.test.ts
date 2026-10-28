@@ -11,21 +11,34 @@ test("returns defaults for empty or invalid input", () => {
 });
 
 test("merges valid fields and keeps defaults for the rest", () => {
-  const settings = normalizeSettings({ background: "grid", showOutlineByDefault: true });
+  const settings = normalizeSettings({
+    background: "grid",
+    showOutlineByDefault: true,
+    wheelBehavior: "pan",
+  });
   assert.equal(settings.background, "grid");
   assert.equal(settings.showOutlineByDefault, true);
+  assert.equal(settings.wheelBehavior, "pan");
   assert.equal(settings.maxImageCacheMB, DEFAULT_SETTINGS.maxImageCacheMB);
+});
+
+test("defaults to wheel-to-zoom and rejects unknown wheel modes", () => {
+  assert.equal(DEFAULT_SETTINGS.wheelBehavior, "zoom");
+  assert.equal(normalizeSettings({ wheelBehavior: "sparkles" }).wheelBehavior, "zoom");
+  assert.equal(normalizeSettings({ wheelBehavior: 42 }).wheelBehavior, "zoom");
 });
 
 test("rejects invalid values and clamps the cache budget", () => {
   const settings = normalizeSettings({
     background: "sparkles",
+    wheelBehavior: "nope",
     showOutlineByDefault: "yes",
     rememberCameraPerFile: 1,
     maxImageCacheMB: 100000,
     debugLogging: "true",
   });
   assert.equal(settings.background, "none");
+  assert.equal(settings.wheelBehavior, "zoom");
   assert.equal(settings.showOutlineByDefault, false);
   assert.equal(settings.rememberCameraPerFile, true);
   assert.equal(settings.maxImageCacheMB, 512);

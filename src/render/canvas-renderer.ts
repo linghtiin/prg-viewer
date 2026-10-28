@@ -1,6 +1,7 @@
 import type { PrgEdge, PrgNode, Rgba, Rect } from "../format/types.ts";
 import type { Camera, Viewport } from "../scene/camera.ts";
 import { invertForContrast, rgbaToCss } from "../scene/color.ts";
+import { parseCssColor } from "../scene/css-color.ts";
 import { fontSpecOf, layoutTextNode, type TextLayout } from "../scene/text-layout.ts";
 import type { TextMeasurer } from "../scene/text-measurer.ts";
 import type { Scene, SceneEdge } from "../scene/scene.ts";
@@ -11,6 +12,9 @@ const EDGE_LABEL_SIZE = 20;
 const ARROW_SIZE = 11;
 const GRID_STEP = 96;
 const MIN_DRAWN_FONT = 6;
+/** Below this on-screen font size, transparent nodes get a hint of fill. */
+const LOW_ZOOM_FILL_THRESHOLD = 12;
+const LOW_ZOOM_FILL_ALPHA = 0.2;
 
 export interface RenderOptions {
   scene: Scene;
@@ -33,6 +37,7 @@ export class CanvasRenderer {
   private readonly context: CanvasRenderingContext2D;
   private dpr = 1;
   private readonly layouts = new Map<string, TextLayout>();
+  private lowZoomFill = "rgba(128, 128, 128, 0.2)";
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -79,6 +84,7 @@ export class CanvasRenderer {
     );
 
     const world = camera.worldViewport(viewport);
+    this.lowZoomFill = withAlpha(this.dependencies.theme.border, LOW_ZOOM_FILL_ALPHA);
     if (options.showGrid) this.drawGrid(world, camera.scale);
 
     for (const section of scene.sections) {
@@ -176,10 +182,17 @@ export class CanvasRenderer {
     const context = this.context;
     const theme = this.dependencies.theme;
     const layout = this.layoutOf(node);
+    const renderedFontSize = layout.fontSize * camera.scale;
 
     if (node.color.a > 0) {
       this.roundRectPath(node.rect, layout.radius);
       context.fillStyle = rgbaToCss(node.color);
+      context.fill();
+    } else if (renderedFontSize < LOW_ZOOM_FILL_THRESHOLD) {
+      // At low zoom the text becomes unreadable; a translucent fill keeps the
+      // node silhouette visible, mirroring Project Graph's behaviour.
+      this.roundRectPath(node.rect, layout.radius);
+      context.fillStyle = this.lowZoomFill;
       context.fill();
     }
     if (node.borderStyle !== "none") {
@@ -191,7 +204,7 @@ export class CanvasRenderer {
       context.setLineDash([]);
     }
 
-    if (layout.fontSize * camera.scale < MIN_DRAWN_FONT) return;
+    if (renderedFontSize < MIN_DRAWN_FONT) return;
 
     context.fillStyle = textColorFor(node.color, theme.text);
     context.font = this.dependencies.measurer.fontString(layout.fontSize, fontSpecOf(node));
@@ -373,4 +386,10 @@ function drawArrow(
   context.closePath();
   context.fill();
   context.restore();
+}
+
+/** Re-colours any CSS colour string with a new alpha. */
+function withAlpha(css: string, alpha: number): string {
+  const color = parseCssColor(css, { r: 128, g: 128, b: 128, a: 1 });
+  return `rgba(${Math.round(color.r)}, ${Math.round(color.g)}, ${Math.round(color.b)}, ${alpha})`;
 }

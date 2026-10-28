@@ -1,4 +1,4 @@
-import { encode } from "@msgpack/msgpack";
+﻿import { encode } from "@msgpack/msgpack";
 import { zipSync } from "fflate";
 
 /** Builders that produce real PRG containers in memory for tests. */
@@ -111,7 +111,7 @@ export function sectionNode(
     _: "Section",
     details: [],
     uuid,
-    collisionBox: collisionBox(-20, -40, 400, 300),
+    _collisionBoxNormal: collisionBox(-20, -40, 400, 300),
     color: { _: "Color", r: 100, g: 150, b: 200, a: 0.1 },
     text: "Section",
     children,

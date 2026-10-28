@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Added
+
+- Wheel behaviour setting: wheel zooms by default (`Ctrl/⌘ + wheel` pans) and the two modes can be swapped.
+- Transparent nodes get a translucent fill when zoomed out, keeping their silhouette readable.
+
+### Fixed
+
+- Section frames were dropped because their geometry is serialized as `_collisionBoxNormal`; collapsed
+  sections now render as a centred title-sized frame.
+- Text blocks are vertically centred inside their node instead of sitting slightly below the centre.
+- Repeated node uuids (sections inline their children and the stage also lists them) are deduplicated
+  silently instead of producing warnings.
+
 ## [0.1.0] - 2026-10-28
 
 ### Added

@@ -81,7 +81,9 @@ test("collapsed sections hide their descendants and their edges", () => {
     ["s"],
   );
   assert.equal(scene.edges.length, 0);
-  assert.deepEqual(scene.bounds, { x: -20, y: -40, width: 400, height: 300 });
+  // The collapsed frame is drawn at a title-sized box centred on the original
+  // section; the hidden child still contributes to the document bounds.
+  assert.deepEqual(scene.bounds, { x: 0, y: 0, width: 250, height: 134 });
 });
 
 test("hit testing returns the topmost node", () => {

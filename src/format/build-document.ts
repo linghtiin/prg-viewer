@@ -149,10 +149,9 @@ function visitEntity(value: unknown, ancestorDepth: number, state: BuildState): 
 
   const existing = state.nodes.get(id);
   if (existing) {
-    pushWarning(
-      state.warnings,
-      createWarning("duplicate-id", `重复的节点 uuid，已忽略后出现的副本：${id}`, id),
-    );
+    // Sections serialize their children inline while the same entities can also
+    // appear at the top level of the stage, so the same uuid legitimately shows
+    // up twice. Keep the first occurrence and stay silent.
     return existing.id;
   }
 
@@ -208,13 +207,18 @@ function visitEntity(value: unknown, ancestorDepth: number, state: BuildState): 
       return id;
     }
     case "Section": {
+      const collapsed = booleanAt(value, "isCollapsed");
+      const sectionRect = collapsed
+        ? (readRectFromKey(value, "_collisionBoxWhenCollapsed") ??
+          estimateCollapsedSectionRect(rect, stringAt(value, "text")))
+        : rect;
       const section: PrgSectionNode = {
         kind: "section",
         id,
-        rect,
+        rect: sectionRect,
         text: stringAt(value, "text"),
         color: readColor(value.color),
-        collapsed: booleanAt(value, "isCollapsed"),
+        collapsed,
         borderStyle: readBorderStyle(value.borderStyle),
         children: [],
         depth: ancestorDepth + 1,
@@ -466,21 +470,51 @@ function readSizeAdjust(value: unknown): SizeAdjust {
   return value === "manual" ? "manual" : "auto";
 }
 
-function readRect(value: unknown): Rect | null {
-  if (!isRecord(value)) return null;
+/**
+ * Reads a collision box from one of the serialized keys.
+ *
+ * Project Graph stores `collisionBox` for most entities, but `Section` keeps its
+ * geometry in `_collisionBoxNormal` (and only derives `collisionBox` at runtime).
+ */
+function readRectFromKey(value: Record<string, unknown>, key: string): Rect | null {
+  const collisionBox = value[key];
+  if (!isRecord(collisionBox) || !Array.isArray(collisionBox.shapes)) return null;
   const rects: Rect[] = [];
-  const collisionBox = value.collisionBox;
-  if (isRecord(collisionBox) && Array.isArray(collisionBox.shapes)) {
-    for (const shape of collisionBox.shapes) {
-      const rect = readRectangle(shape);
-      if (rect) rects.push(rect);
-    }
-  }
-  if (rects.length === 0) {
-    const rect = readRectangle(value);
+  for (const shape of collisionBox.shapes) {
+    const rect = readRectangle(shape);
     if (rect) rects.push(rect);
   }
   return rects.length > 0 ? unionRects(rects) : null;
+}
+
+function readRect(value: unknown): Rect | null {
+  if (!isRecord(value)) return null;
+  const rect =
+    readRectFromKey(value, "collisionBox") ??
+    readRectFromKey(value, "_collisionBoxNormal") ??
+    readRectFromKey(value, "_collisionBoxWhenCollapsed") ??
+    readRectangle(value);
+  return rect;
+}
+
+/**
+ * A collapsed section only serializes its full geometry. Project Graph derives a
+ * title-sized box centred on it; this is the same approximation without text
+ * measurement.
+ */
+function estimateCollapsedSectionRect(full: Rect, text: string): Rect {
+  let textWidth = 0;
+  for (const character of text) {
+    textWidth += /[\u2e80-\u9fff\uff00-\uffef]/.test(character) ? 32 : 16;
+  }
+  const width = Math.min(full.width, Math.max(96, textWidth + 28));
+  const height = Math.min(full.height, 48);
+  return {
+    x: full.x + (full.width - width) / 2,
+    y: full.y + (full.height - height) / 2,
+    width,
+    height,
+  };
 }
 
 function readRectangle(value: unknown): Rect | null {

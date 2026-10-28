@@ -45,10 +45,17 @@
 | `TextNode`                                     | `uuid`, `text`, `collisionBox`, `color`, `fontScaleLevel`, `sizeAdjust`(`auto`/`manual`), `fontFamily`, `fontWeight`, `borderStyle`(`solid`/`dashed`/`none`), `details`(Plate 富文本) |
 | `ImageNode`                                    | `uuid`, `collisionBox`, `attachmentId`, `scale`, `isBackground`                                                                                                                       |
 | `LatexNode`                                    | `uuid`, `latexSource`, `collisionBox`, `color`, `fontScaleLevel`                                                                                                                      |
-| `Section`                                      | `uuid`, `collisionBox`, `color`, `text`, `children`(内联实体数组), `isCollapsed`, `locked`, `borderStyle`                                                                             |
+| `Section`                                      | `uuid`, `_collisionBoxNormal`(位置), `color`, `text`, `children`(内联实体数组), `isCollapsed`, `locked`, `borderStyle`                                                                |
 | `LineEdge`                                     | `uuid`, `associationList`(引用数组), `text`, `color`, `lineType`, `arrowType`, `sourceRectangleRate`, `targetRectangleRate`                                                           |
 | `PenStroke`                                    | `uuid`, `segments`, `color`, `collisionBox`, `location`                                                                                                                               |
 | `SvgNode` / `MediaNode` / `ReferenceBlockNode` | `uuid`, `collisionBox`, `attachmentId`(等)                                                                                                                                            |
+
+注意：
+
+- `Section` 的几何存在 `_collisionBoxNormal`，而不是 `collisionBox` —— 后者只是运行期 getter，不参与序列化。
+  折叠（`isCollapsed`）时只保留完整几何，标题尺寸的折叠框需要读端自行估算。
+- `children` 内联的实体通常也出现在顶层 `stage`（或通过 `$` 指向同一对象），因此同一 `uuid` 出现两次是正常现象，
+  读端应静默去重而不是报错。
 
 几何基础类：
 

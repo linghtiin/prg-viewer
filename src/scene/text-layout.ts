@@ -29,8 +29,9 @@ export interface TextLayout {
   radius: number;
   lineHeight: number;
   lines: string[];
-  /** Top-left of the measured text block, including the font's internal offset. */
+  /** Left edge of the text block. */
   originX: number;
+  /** Top edge of the text block, vertically centred in the node. */
   originY: number;
 }
 
@@ -84,15 +85,22 @@ export function layoutTextNode(node: PrgTextNode, measurer: TextMeasurer): TextL
   const font = fontSpecOf(node);
   const maxWidth = node.sizeAdjust === "manual" ? node.rect.width - padding * 2 : Number.POSITIVE_INFINITY;
   const lines = wrapText(node.text, maxWidth, fontSize, measurer, font);
+  const lineHeight = fontSize * LINE_HEIGHT;
+  const blockHeight = lines.length * lineHeight;
+  const contentTop = node.rect.y + padding;
+  const contentHeight = Math.max(0, node.rect.height - padding * 2);
+  // Centre the text block vertically. When the text is taller than the box it
+  // starts at the top padding instead of overflowing upwards.
+  const verticalOffset = Math.max(0, (contentHeight - blockHeight) / 2);
   return {
     fontSize,
     padding,
     borderWidth: borderWidthForFontSize(fontSize),
     radius: NODE_RADIUS,
-    lineHeight: fontSize * LINE_HEIGHT,
+    lineHeight,
     lines,
     originX: node.rect.x + padding,
-    originY: node.rect.y + padding + fontSize / 4,
+    originY: contentTop + verticalOffset,
   };
 }
 

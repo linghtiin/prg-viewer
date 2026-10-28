@@ -1,7 +1,10 @@
+import type { WheelBehavior } from "./scene/input.ts";
+
 export type BackgroundStyle = "none" | "grid";
 
 export interface PrgViewerSettings {
   background: BackgroundStyle;
+  wheelBehavior: WheelBehavior;
   showOutlineByDefault: boolean;
   rememberCameraPerFile: boolean;
   maxImageCacheMB: number;
@@ -10,6 +13,7 @@ export interface PrgViewerSettings {
 
 export const DEFAULT_SETTINGS: PrgViewerSettings = {
   background: "none",
+  wheelBehavior: "zoom",
   showOutlineByDefault: false,
   rememberCameraPerFile: true,
   maxImageCacheMB: 64,
@@ -34,6 +38,7 @@ export function normalizeSettings(raw: unknown): PrgViewerSettings {
     typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   return {
     background: source.background === "grid" ? "grid" : "none",
+    wheelBehavior: source.wheelBehavior === "pan" ? "pan" : "zoom",
     showOutlineByDefault: booleanOr(source.showOutlineByDefault, DEFAULT_SETTINGS.showOutlineByDefault),
     rememberCameraPerFile: booleanOr(source.rememberCameraPerFile, DEFAULT_SETTINGS.rememberCameraPerFile),
     maxImageCacheMB: numberInRange(

@@ -29,6 +29,20 @@ export class PrgSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("滚轮操作")
+      .setDesc("默认：滚轮缩放，按住 Ctrl/⌘ 滚动平移。切换后：滚轮平移，按住 Ctrl/⌘ 缩放。")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("zoom", "滚轮缩放（Ctrl/⌘ 平移）")
+          .addOption("pan", "滚轮平移（Ctrl/⌘ 缩放）")
+          .setValue(this.plugin.settings.wheelBehavior)
+          .onChange(async (value) => {
+            this.plugin.settings.wheelBehavior = value === "pan" ? "pan" : "zoom";
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
       .setName("默认显示大纲")
       .setDesc("打开 .prg 时自动展开右侧的节点大纲。")
       .addToggle((toggle) =>

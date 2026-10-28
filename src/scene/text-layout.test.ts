@@ -77,10 +77,32 @@ test("auto nodes do not wrap, manual nodes wrap at the padding", () => {
   assert.ok(manual.lines.every((line) => measurer.measureWidth(line, 32) <= 60 - 28));
 });
 
-test("text origin includes padding and the font offset", () => {
+test("text block is placed inside the padding and vertically centred", () => {
   const layout = layoutTextNode(textNode({ rect: { x: 10, y: 20, width: 200, height: 80 } }), measurer);
   assert.equal(layout.originX, 24);
-  assert.equal(layout.originY, 42);
-  assert.equal(lineCenterY(layout, 0), 42 + 24);
+  assert.equal(layout.originY, 36);
+  assert.equal(lineCenterY(layout, 0), 60);
   assert.equal(textBlockHeight(layout), 48);
+});
+
+test("single-line text is centred in tall nodes", () => {
+  const layout = layoutTextNode(textNode({ rect: { x: 0, y: 0, width: 200, height: 120 } }), measurer);
+  assert.equal(lineCenterY(layout, 0), 60);
+});
+
+test("multi-line text is centred as one block", () => {
+  const layout = layoutTextNode(
+    textNode({ text: "a\nb", rect: { x: 0, y: 0, width: 200, height: 140 } }),
+    measurer,
+  );
+  const first = lineCenterY(layout, 0);
+  const second = lineCenterY(layout, 1);
+  assert.equal((first + second) / 2, 70);
+  assert.equal(textBlockHeight(layout), 96);
+});
+
+test("overflowing text starts at the top padding instead of drifting up", () => {
+  const text = Array.from({ length: 10 }, () => "x").join("\n");
+  const layout = layoutTextNode(textNode({ text, rect: { x: 0, y: 0, width: 200, height: 100 } }), measurer);
+  assert.equal(layout.originY, 14);
 });

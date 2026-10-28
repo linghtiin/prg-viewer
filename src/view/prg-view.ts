@@ -187,6 +187,7 @@ export class PrgView extends FileView {
       getScene: () => this.scene,
       getCamera: () => this.camera,
       getViewport: () => this.viewportSize(),
+      getWheelBehavior: () => this.plugin.settings.wheelBehavior,
       requestRender: () => this.requestRender(),
       onSelect: (id: string | null) => this.select(id),
       onHover: (id: string | null) => {

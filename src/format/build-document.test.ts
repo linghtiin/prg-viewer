@@ -117,6 +117,30 @@ test("flattens nested sections and their children", () => {
   assert.deepEqual(inner.children, ["c2"]);
 });
 
+test("reads Section geometry from _collisionBoxNormal", () => {
+  const document = parsePrg(buildPrg({ stage: [sectionNode("s", [])] }));
+  const section = document.nodes.get("s");
+  assert.ok(section && section.kind === "section");
+  assert.deepEqual(section.rect, { x: -20, y: -40, width: 400, height: 300 });
+  assert.equal(document.warnings.length, 0);
+});
+
+test("collapsed sections get a centred title-sized frame", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [sectionNode("s", [textNode("c")], { isCollapsed: true, text: "Section 1" })],
+    }),
+  );
+  const section = document.nodes.get("s");
+  assert.ok(section && section.kind === "section");
+  assert.equal(section.collapsed, true);
+  assert.ok(section.rect.width < 400);
+  assert.ok(section.rect.height < 300);
+  assert.equal(section.rect.x + section.rect.width / 2, 180);
+  assert.equal(section.rect.y + section.rect.height / 2, 110);
+  assert.ok(document.nodes.has("c"));
+});
+
 test("maps edges to endpoints and rates", () => {
   const document = parsePrg(
     buildPrg({
@@ -169,9 +193,14 @@ test("skips invalid nodes and edges with a warning", () => {
   assert.equal(document.nodes.size, 1);
   assert.equal(document.edges.length, 0);
   const codes = warningCodes(document.warnings);
-  assert.ok(codes.includes("duplicate-id"));
   assert.ok(codes.includes("missing-field"));
   assert.ok(codes.includes("dangling-edge"));
+});
+
+test("deduplicates repeated uuids silently", () => {
+  const document = parsePrg(buildPrg({ stage: [textNode("dup"), textNode("dup")] }));
+  assert.equal(document.nodes.size, 1);
+  assert.equal(document.warnings.length, 0);
 });
 
 test("reports unsupported versions as a warning", () => {

@@ -1,4 +1,5 @@
 import type { Camera, Viewport } from "../scene/camera.ts";
+import { resolveWheelAction, type WheelBehavior } from "../scene/input.ts";
 import { hitTestNode, type Scene } from "../scene/scene.ts";
 
 export interface InteractionHost {
@@ -6,6 +7,7 @@ export interface InteractionHost {
   getScene(): Scene | null;
   getCamera(): Camera;
   getViewport(): Viewport;
+  getWheelBehavior(): WheelBehavior;
   requestRender(): void;
   onSelect(id: string | null): void;
   onHover(id: string | null): void;
@@ -112,11 +114,17 @@ export class InteractionController {
     event.preventDefault();
     const camera = this.host.getCamera();
     const point = this.localPoint(event);
-    if (event.ctrlKey || event.metaKey) {
-      const factor = Math.exp(-event.deltaY * 0.0025);
-      camera.zoomAt(point, camera.scale * factor);
+    const action = resolveWheelAction({
+      behavior: this.host.getWheelBehavior(),
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      deltaX: event.deltaX,
+      deltaY: event.deltaY,
+    });
+    if (action.kind === "zoom") {
+      camera.zoomAt(point, camera.scale * action.factor);
     } else {
-      camera.panByScreen(-event.deltaX, -event.deltaY);
+      camera.panByScreen(action.dx, action.dy);
     }
     this.host.requestRender();
     this.host.onCameraChanged();
