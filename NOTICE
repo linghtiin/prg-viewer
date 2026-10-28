@@ -1,0 +1,17 @@
+prg-viewer
+==========
+
+This plugin reads files in the PRG container format produced by Project Graph
+(https://graphif.dev, https://github.com/graphif/project-graph).
+
+Project Graph is licensed under GPL-3.0. This project is an independent
+implementation: it was written from the public PRG file format specification
+(https://graphif.dev/docs/spec/prg), the public serializer specification
+(https://graphif.dev/docs/spec/serializer) and black-box observation of files
+produced by the application. No source code of Project Graph is copied or
+linked into this project.
+
+The visual conventions implemented here (font scale, node padding, border
+width, corner radius, line-height, edge anchoring and curve bending) are
+descriptive constants required for visual compatibility with files authored in
+the application.

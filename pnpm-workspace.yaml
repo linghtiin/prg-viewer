@@ -1,0 +1,13 @@
+packages: []
+
+# Windows + junctions makes esbuild's optional platform package unresolvable
+# from the symlinked entry point; a hoisted layout is deterministic everywhere.
+nodeLinker: hoisted
+
+# esbuild ships prebuilt binaries; its postinstall only validates the install.
+# It is denied explicitly so `pnpm install` stays offline-friendly and script-free.
+allowBuilds:
+  esbuild: false
+
+# Do not auto-run `pnpm install` before every `pnpm run` command.
+verifyDepsBeforeRun: false

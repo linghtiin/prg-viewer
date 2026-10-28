@@ -1,0 +1,56 @@
+name: Bug report
+description: 报告解析、渲染或交互问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量附上可复现的最小 `.prg` 文件（可用 `pnpm inspect` 输出的 JSON 代替敏感内容）。
+  - type: input
+    id: version
+    attributes:
+      label: 插件版本
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: obsidian
+    attributes:
+      label: Obsidian 版本与平台
+      placeholder: 1.7.7 / Windows 11
+    validations:
+      required: true
+  - type: input
+    id: prg
+    attributes:
+      label: 相关 PRG 版本
+      description: 可在视图工具条元信息或 `pnpm inspect` 中看到
+      placeholder: 2.7.0
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开 xxx.prg
+        2. 缩放到 xx%
+        3. ……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 控制台日志 / 截图
+      description: 设置中打开"调试日志"后可在开发者工具看到细节

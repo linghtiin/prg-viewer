@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+main.js
+main.js.map
+*.map
+dist/
+
+# tests
+coverage/
+
+# editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+
+# local scratch
+.tmp/
+*.log
