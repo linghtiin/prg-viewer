@@ -481,10 +481,39 @@ function readRectFromKey(value: Record<string, unknown>, key: string): Rect | nu
   if (!isRecord(collisionBox) || !Array.isArray(collisionBox.shapes)) return null;
   const rects: Rect[] = [];
   for (const shape of collisionBox.shapes) {
-    const rect = readRectangle(shape);
+    const rect = readShapeRect(shape);
     if (rect) rects.push(rect);
   }
   return rects.length > 0 ? unionRects(rects) : null;
+}
+
+/**
+ * Collision boxes hold `Rectangle` shapes for most entities, but sections store
+ * the four boundary `Line`s of their frame (plus a title-bar rectangle). Both are
+ * considered so the frame is measured from its real outline.
+ */
+function readShapeRect(shape: unknown): Rect | null {
+  const rectangle = readRectangle(shape);
+  if (rectangle) return rectangle;
+  return readLineRect(shape);
+}
+
+function readLineRect(value: unknown): Rect | null {
+  if (!isRecord(value)) return null;
+  const start = value.start;
+  const end = value.end;
+  if (!isRecord(start) || !isRecord(end)) return null;
+  const startX = numberAt(start, "x", Number.NaN);
+  const startY = numberAt(start, "y", Number.NaN);
+  const endX = numberAt(end, "x", Number.NaN);
+  const endY = numberAt(end, "y", Number.NaN);
+  if (![startX, startY, endX, endY].every(Number.isFinite)) return null;
+  return {
+    x: Math.min(startX, endX),
+    y: Math.min(startY, endY),
+    width: Math.abs(endX - startX),
+    height: Math.abs(endY - startY),
+  };
 }
 
 function readRect(value: unknown): Rect | null {

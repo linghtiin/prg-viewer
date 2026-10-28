@@ -1,5 +1,5 @@
 import { FONT_SIZE, LINE_HEIGHT, NODE_PADDING, NODE_RADIUS } from "../constants.ts";
-import type { PrgTextNode } from "../format/types.ts";
+import type { PrgTextNode, Rect } from "../format/types.ts";
 import type { FontSpec, TextMeasurer } from "./text-measurer.ts";
 
 /**
@@ -111,4 +111,29 @@ export function lineCenterY(layout: TextLayout, index: number): number {
 
 export function textBlockHeight(layout: TextLayout): number {
   return layout.lines.length * layout.lineHeight;
+}
+
+/**
+ * Grows a text node's box so the rendered text always fits.
+ *
+ * Boxes in `.prg` files were measured with Project Graph's own font. Our canvas
+ * font can be a few percent wider, which made the last characters cross the
+ * border. Enlarging (never shrinking) keeps the authored geometry intact while
+ * guaranteeing the text is fully wrapped by its node.
+ */
+export function fitTextRect(node: PrgTextNode, measurer: TextMeasurer): Rect {
+  const fontSize = fontSizeForLevel(node.fontScaleLevel);
+  const padding = paddingForFontSize(fontSize);
+  const font = fontSpecOf(node);
+  const maxWidth =
+    node.sizeAdjust === "manual" ? Math.max(0, node.rect.width - padding * 2) : Number.POSITIVE_INFINITY;
+  const lines = wrapText(node.text, maxWidth, fontSize, measurer, font);
+  let widest = 0;
+  for (const line of lines) {
+    widest = Math.max(widest, measurer.measureWidth(line, fontSize, font));
+  }
+  const width = Math.max(node.rect.width, widest + padding * 2);
+  const height = Math.max(node.rect.height, lines.length * fontSize * LINE_HEIGHT + padding * 2);
+  if (width === node.rect.width && height === node.rect.height) return node.rect;
+  return { x: node.rect.x, y: node.rect.y, width, height };
 }

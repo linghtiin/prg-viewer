@@ -4,6 +4,7 @@ import type { PrgTextNode } from "../format/types.ts";
 import { createApproximateTextMeasurer } from "./text-measurer.ts";
 import {
   borderWidthForFontSize,
+  fitTextRect,
   fontSizeForLevel,
   layoutTextNode,
   lineCenterY,
@@ -105,4 +106,25 @@ test("overflowing text starts at the top padding instead of drifting up", () => 
   const text = Array.from({ length: 10 }, () => "x").join("\n");
   const layout = layoutTextNode(textNode({ text, rect: { x: 0, y: 0, width: 200, height: 100 } }), measurer);
   assert.equal(layout.originY, 14);
+});
+
+test("fitTextRect widens auto nodes when the measured text is wider than the box", () => {
+  const node = textNode({ text: "a".repeat(30), rect: { x: 5, y: 6, width: 100, height: 50 } });
+  const rect = fitTextRect(node, measurer);
+  assert.equal(rect.x, 5);
+  assert.equal(rect.y, 6);
+  assert.ok(rect.width >= 30 * 16 + 28);
+  assert.equal(rect.height, 76);
+});
+
+test("fitTextRect leaves boxes that already contain their text untouched", () => {
+  const node = textNode({ text: "hi", rect: { x: 0, y: 0, width: 300, height: 120 } });
+  assert.equal(fitTextRect(node, measurer), node.rect);
+});
+
+test("fitTextRect never shrinks a manual box but grows it for wrapped overflow", () => {
+  const node = textNode({ text: "a\nb", sizeAdjust: "manual", rect: { x: 0, y: 0, width: 200, height: 40 } });
+  const rect = fitTextRect(node, measurer);
+  assert.equal(rect.width, 200);
+  assert.ok(rect.height >= 2 * 48 + 28);
 });

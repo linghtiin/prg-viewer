@@ -2,7 +2,7 @@ import type { PrgEdge, PrgNode, Rgba, Rect } from "../format/types.ts";
 import type { Camera, Viewport } from "../scene/camera.ts";
 import { invertForContrast, rgbaToCss } from "../scene/color.ts";
 import { parseCssColor } from "../scene/css-color.ts";
-import { fontSpecOf, layoutTextNode, type TextLayout } from "../scene/text-layout.ts";
+import { fontSpecOf, fitTextRect, layoutTextNode, type TextLayout } from "../scene/text-layout.ts";
 import type { TextMeasurer } from "../scene/text-measurer.ts";
 import type { Scene, SceneEdge } from "../scene/scene.ts";
 import type { RenderTheme } from "./theme.ts";
@@ -36,7 +36,8 @@ export interface RendererDeps {
 export class CanvasRenderer {
   private readonly context: CanvasRenderingContext2D;
   private dpr = 1;
-  private readonly layouts = new Map<string, TextLayout>();
+  private readonly layouts = new Map<string, { rect: Rect; layout: TextLayout }>();
+  private readonly visualRects = new Map<string, { source: Rect; rect: Rect }>();
   private lowZoomFill = "rgba(128, 128, 128, 0.2)";
 
   constructor(
@@ -51,6 +52,7 @@ export class CanvasRenderer {
   setDependencies(dependencies: RendererDeps): void {
     this.dependencies = dependencies;
     this.layouts.clear();
+    this.visualRects.clear();
   }
 
   resize(width: number, height: number, dpr: number): void {
@@ -95,7 +97,7 @@ export class CanvasRenderer {
       if (!rectVisible(node.rect, world)) continue;
       this.drawNode(node, camera, selection.has(node.id));
       if (options.hoveredId === node.id && !selection.has(node.id)) {
-        this.strokeOutline(node.rect, 1 / camera.scale, true, 0.45);
+        this.strokeOutline(this.visualRect(node), 1 / camera.scale, true, 0.45);
       }
     }
 
@@ -105,8 +107,26 @@ export class CanvasRenderer {
 
     for (const id of selection) {
       const node = scene.nodeById.get(id);
-      if (node) this.strokeOutline(node.rect, 2 / camera.scale, false, 1);
+      if (node) this.strokeOutline(this.visualRect(node), 2 / camera.scale, false, 1);
     }
+  }
+
+  /** The rectangle actually painted for a node (text boxes grow to fit their text). */
+  private visualRect(node: PrgNode): Rect {
+    if (node.kind !== "text") return node.rect;
+    const cached = this.visualRects.get(node.id);
+    if (
+      cached &&
+      cached.source.x === node.rect.x &&
+      cached.source.y === node.rect.y &&
+      cached.source.width === node.rect.width &&
+      cached.source.height === node.rect.height
+    ) {
+      return cached.rect;
+    }
+    const rect = fitTextRect(node, this.dependencies.measurer);
+    this.visualRects.set(node.id, { source: node.rect, rect });
+    return rect;
   }
 
   private drawNode(node: PrgNode, camera: Camera, selected: boolean): void {
@@ -181,22 +201,23 @@ export class CanvasRenderer {
   private drawTextNode(node: Extract<PrgNode, { kind: "text" }>, camera: Camera, selected: boolean): void {
     const context = this.context;
     const theme = this.dependencies.theme;
-    const layout = this.layoutOf(node);
+    const drawRect = this.visualRect(node);
+    const layout = this.layoutOf(node, drawRect);
     const renderedFontSize = layout.fontSize * camera.scale;
 
     if (node.color.a > 0) {
-      this.roundRectPath(node.rect, layout.radius);
+      this.roundRectPath(drawRect, layout.radius);
       context.fillStyle = rgbaToCss(node.color);
       context.fill();
     } else if (renderedFontSize < LOW_ZOOM_FILL_THRESHOLD) {
       // At low zoom the text becomes unreadable; a translucent fill keeps the
       // node silhouette visible, mirroring Project Graph's behaviour.
-      this.roundRectPath(node.rect, layout.radius);
+      this.roundRectPath(drawRect, layout.radius);
       context.fillStyle = this.lowZoomFill;
       context.fill();
     }
     if (node.borderStyle !== "none") {
-      this.roundRectPath(node.rect, layout.radius);
+      this.roundRectPath(drawRect, layout.radius);
       context.strokeStyle = selected ? theme.selection : theme.border;
       context.lineWidth = layout.borderWidth;
       context.setLineDash(node.borderStyle === "dashed" ? [8 / camera.scale, 6 / camera.scale] : []);
@@ -309,11 +330,19 @@ export class CanvasRenderer {
     context.restore();
   }
 
-  private layoutOf(node: Extract<PrgNode, { kind: "text" }>): TextLayout {
+  private layoutOf(node: Extract<PrgNode, { kind: "text" }>, rect: Rect): TextLayout {
     const cached = this.layouts.get(node.id);
-    if (cached) return cached;
-    const layout = layoutTextNode(node, this.dependencies.measurer);
-    this.layouts.set(node.id, layout);
+    if (
+      cached &&
+      cached.rect.x === rect.x &&
+      cached.rect.y === rect.y &&
+      cached.rect.width === rect.width &&
+      cached.rect.height === rect.height
+    ) {
+      return cached.layout;
+    }
+    const layout = layoutTextNode({ ...node, rect }, this.dependencies.measurer);
+    this.layouts.set(node.id, { rect, layout });
     return layout;
   }
 

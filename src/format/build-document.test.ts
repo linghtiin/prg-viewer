@@ -6,6 +6,7 @@ import {
   imageNode,
   latexNode,
   lineEdge,
+  lineShape,
   sectionNode,
   textNode,
   TINY_PNG,
@@ -122,6 +123,39 @@ test("reads Section geometry from _collisionBoxNormal", () => {
   const section = document.nodes.get("s");
   assert.ok(section && section.kind === "section");
   assert.deepEqual(section.rect, { x: -20, y: -40, width: 400, height: 300 });
+  assert.equal(document.warnings.length, 0);
+});
+
+test("derives section frames from boundary Line shapes", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        {
+          _: "Section",
+          uuid: "s",
+          text: "Section_0",
+          children: [],
+          isCollapsed: false,
+          borderStyle: "solid",
+          color: { _: "Color", r: 0, g: 0, b: 0, a: 0 },
+          _collisionBoxNormal: {
+            _: "CollisionBox",
+            shapes: [
+              lineShape(0, 0, 400, 0),
+              lineShape(400, 0, 400, 300),
+              lineShape(400, 300, 0, 300),
+              lineShape(0, 300, 0, 0),
+              // The title bar is serialized as a rectangle inside the frame.
+              { _: "Rectangle", location: { _: "Vector", x: 0, y: 0 }, size: { _: "Vector", x: 400, y: 50 } },
+            ],
+          },
+        },
+      ],
+    }),
+  );
+  const section = document.nodes.get("s");
+  assert.ok(section && section.kind === "section");
+  assert.deepEqual(section.rect, { x: 0, y: 0, width: 400, height: 300 });
   assert.equal(document.warnings.length, 0);
 });
 

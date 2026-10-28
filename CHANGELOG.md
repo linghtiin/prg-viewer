@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
@@ -15,7 +15,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 - Section frames were dropped because their geometry is serialized as `_collisionBoxNormal`; collapsed
   sections now render as a centred title-sized frame.
+- Section frames are now measured from the serialized boundary `Line` shapes; the title-bar rectangle was previously mistaken for the whole frame.
 - Text blocks are vertically centred inside their node instead of sitting slightly below the centre.
+- Text nodes grow slightly when the local font measures wider than the stored box, so the last characters no longer cross the border.
 - Repeated node uuids (sections inline their children and the stage also lists them) are deduplicated
   silently instead of producing warnings.
 

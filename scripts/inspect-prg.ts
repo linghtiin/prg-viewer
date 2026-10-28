@@ -13,6 +13,8 @@ import { basename } from "node:path";
 import { PrgError } from "../src/format/errors.ts";
 import { parsePrg } from "../src/format/build-document.ts";
 import type { PrgDocument } from "../src/format/types.ts";
+import { fontSizeForLevel } from "../src/scene/text-layout.ts";
+import { createApproximateTextMeasurer } from "../src/scene/text-measurer.ts";
 
 interface Summary {
   file: string;
@@ -71,11 +73,54 @@ function printSummary(summary: Summary): void {
   }
 }
 
+const measurer = createApproximateTextMeasurer();
+
+function preview(text: string): string {
+  const flat = text.replaceAll("\n", "⏎");
+  return flat.length > 64 ? `${flat.slice(0, 63)}…` : flat;
+}
+
+function printNodes(document: PrgDocument): void {
+  console.log("  nodes:");
+  for (const id of document.order) {
+    const node = document.nodes.get(id);
+    if (!node) continue;
+    const { x, y, width, height } = node.rect;
+    const rect = `x=${x.toFixed(1)} y=${y.toFixed(1)} w=${width.toFixed(1)} h=${height.toFixed(1)}`;
+    switch (node.kind) {
+      case "text": {
+        const fontSize = fontSizeForLevel(node.fontScaleLevel);
+        const measured = measurer.measureWidth(node.text, fontSize);
+        const fits = measured <= width - 28 ? "fits" : `OVERFLOW +${Math.round(measured - (width - 28))}px`;
+        console.log(
+          `    [text] ${id.slice(0, 8)} ${rect} level=${node.fontScaleLevel} adjust=${node.sizeAdjust} measured=${Math.round(measured)} ${fits} :: ${preview(node.text)}`,
+        );
+        break;
+      }
+      case "section":
+        console.log(
+          `    [section] ${id.slice(0, 8)} ${rect} collapsed=${node.collapsed} border=${node.borderStyle} children=${node.children.length} :: ${preview(node.text)}`,
+        );
+        break;
+      case "image":
+        console.log(`    [image] ${id.slice(0, 8)} ${rect} :: ${node.attachmentId}`);
+        break;
+      case "latex":
+        console.log(`    [latex] ${id.slice(0, 8)} ${rect} :: ${preview(node.source)}`);
+        break;
+      case "unknown":
+        console.log(`    [unknown] ${id.slice(0, 8)} ${rect} :: ${node.typeName}`);
+        break;
+    }
+  }
+}
+
 function main(argv: string[]): number {
   const json = argv.includes("--json");
+  const dumpNodes = argv.includes("--nodes");
   const files = argv.filter((argument) => !argument.startsWith("--"));
   if (files.length === 0) {
-    console.error("usage: pnpm inspect <file.prg> [more.prg] [--json]");
+    console.error("usage: pnpm inspect <file.prg> [more.prg] [--json] [--nodes]");
     return 2;
   }
 
@@ -89,6 +134,7 @@ function main(argv: string[]): number {
       const summary = summarise(file, document, bytes.byteLength);
       summaries.push(summary);
       if (!json) printSummary(summary);
+      if (dumpNodes) printNodes(document);
     } catch (error) {
       failed = true;
       const message = error instanceof Error ? error.message : String(error);

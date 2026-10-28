@@ -53,7 +53,9 @@
 注意：
 
 - `Section` 的几何存在 `_collisionBoxNormal`，而不是 `collisionBox` —— 后者只是运行期 getter，不参与序列化。
-  折叠（`isCollapsed`）时只保留完整几何，标题尺寸的折叠框需要读端自行估算。
+  其 `shapes` 由 4 条 `Line`（上、右、下、左边界）和一个标题条 `Rectangle` 组成，真实外框取 4 条线的包围盒；
+  若只看 `Rectangle` 会得到 50px 高的标题条。
+  折叠（`isCollapsed`）时不保存折叠框，读端需按标题文字估算居中框。
 - `children` 内联的实体通常也出现在顶层 `stage`（或通过 `$` 指向同一对象），因此同一 `uuid` 出现两次是正常现象，
   读端应静默去重而不是报错。
 

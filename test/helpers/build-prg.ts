@@ -1,4 +1,4 @@
-﻿import { encode } from "@msgpack/msgpack";
+import { encode } from "@msgpack/msgpack";
 import { zipSync } from "fflate";
 
 /** Builders that produce real PRG containers in memory for tests. */
@@ -44,6 +44,15 @@ export function collisionBox(x: number, y: number, width: number, height: number
   return {
     _: "CollisionBox",
     shapes: [{ _: "Rectangle", location: { _: "Vector", x, y }, size: { _: "Vector", x: width, y: height } }],
+  };
+}
+
+/** A `Line` shape as used by section frames. */
+export function lineShape(x1: number, y1: number, x2: number, y2: number): Record<string, unknown> {
+  return {
+    _: "Line",
+    start: { _: "Vector", x: x1, y: y1 },
+    end: { _: "Vector", x: x2, y: y2 },
   };
 }
 
