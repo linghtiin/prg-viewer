@@ -14,6 +14,8 @@ import { clamp, rectCenter, rectsIntersect } from "../scene/geometry.ts";
 import { buildScene, type Scene } from "../scene/scene.ts";
 import { fontSizeForLevel } from "../scene/text-layout.ts";
 import {
+  DEFAULT_DETAILS_RATIO,
+  DEFAULT_OUTLINE_WIDTH,
   MAX_DETAILS_RATIO,
   MAX_OUTLINE_WIDTH,
   MIN_DETAILS_RATIO,
@@ -74,6 +76,9 @@ export class PrgView extends FileView {
   private pendingFit = false;
   private pendingLoad = false;
   private outlineVisible = false;
+  /** Sidebar geometry is session-only, never persisted to settings. */
+  private outlineWidth = DEFAULT_OUTLINE_WIDTH;
+  private detailsRatio = DEFAULT_DETAILS_RATIO;
   private readonly collapsedOutline = new Set<string>();
   private outlineFileKey: string | null = null;
   private matches: PrgNode[] = [];
@@ -104,8 +109,7 @@ export class PrgView extends FileView {
     this.outlineVisible = this.plugin.settings.showOutlineByDefault;
     this.chrome.setOutlineVisible(this.outlineVisible);
     this.chrome.setOutlineMode(this.plugin.settings.outlineMode);
-    this.chrome.setOutlineWidth(this.plugin.settings.outlineWidth);
-    this.chrome.setDetailsRatio(this.plugin.settings.detailsRatio);
+    this.applyOutlineLayout();
     this.registerDomEvent(this.chrome.outlinePanel, "keydown", (event) => this.handleOutlineKeyDown(event));
 
     this.theme = readThemeFromElement(this.contentEl);
@@ -149,6 +153,8 @@ export class PrgView extends FileView {
   override async onLoadFile(file: TFile): Promise<void> {
     this.file = file;
     if (this.chrome) {
+      // A new file starts from the configured defaults; manual drags stay session-only.
+      this.applyOutlineLayout();
       await this.loadDocument();
     } else {
       this.pendingLoad = true;
@@ -169,8 +175,6 @@ export class PrgView extends FileView {
   applySettings(): void {
     this.applyTheme();
     this.applyOutlineMode();
-    this.chrome?.setOutlineWidth(this.plugin.settings.outlineWidth);
-    this.chrome?.setDetailsRatio(this.plugin.settings.detailsRatio);
     this.images?.dispose();
     this.images = new ImageCache(this.plugin.settings.maxImageCacheMB * 1024 * 1024);
     this.requestRender();
@@ -184,14 +188,18 @@ export class PrgView extends FileView {
     this.refreshOutline();
   }
 
-  /** Applies the outline width without rebuilding caches. */
-  applyOutlineWidth(): void {
-    this.chrome?.setOutlineWidth(this.plugin.settings.outlineWidth);
-  }
-
-  /** Applies the persisted details-pane ratio without rebuilding caches. */
-  applyDetailsRatio(): void {
-    this.chrome?.setDetailsRatio(this.plugin.settings.detailsRatio);
+  /** Applies the configured default sidebar layout to this view (used on open and settings changes). */
+  applyOutlineLayout(): void {
+    this.outlineWidth = Math.min(
+      MAX_OUTLINE_WIDTH,
+      Math.max(MIN_OUTLINE_WIDTH, Math.round(this.plugin.settings.outlineWidth)),
+    );
+    this.detailsRatio = Math.min(
+      MAX_DETAILS_RATIO,
+      Math.max(MIN_DETAILS_RATIO, this.plugin.settings.detailsRatio),
+    );
+    this.chrome?.setOutlineWidth(this.outlineWidth);
+    this.chrome?.setDetailsRatio(this.detailsRatio);
   }
 
   private actions(): ChromeActions {
@@ -202,8 +210,8 @@ export class PrgView extends FileView {
       resetZoom: () => this.resetZoom(),
       toggleOutline: () => this.toggleOutline(),
       setOutlineMode: (mode) => this.setOutlineMode(mode),
-      setOutlineWidth: (width, commit) => this.setOutlineWidth(width, commit),
-      setDetailsRatio: (ratio, commit) => this.setDetailsRatio(ratio, commit),
+      setOutlineWidth: (width) => this.setOutlineWidth(width),
+      setDetailsRatio: (ratio) => this.setDetailsRatio(ratio),
       copyLink: () => {
         void this.copyCurrentLink();
       },
@@ -618,24 +626,18 @@ export class PrgView extends FileView {
     this.scheduleCameraSave();
   }
 
-  private setOutlineWidth(width: number, commit: boolean): void {
-    const clamped = Math.min(MAX_OUTLINE_WIDTH, Math.max(MIN_OUTLINE_WIDTH, Math.round(width)));
-    this.plugin.settings.outlineWidth = clamped;
-    this.chrome?.setOutlineWidth(clamped);
-    if (commit) void this.plugin.saveSettings();
+  /** Session-only outline width; never written to settings. */
+  private setOutlineWidth(width: number): void {
+    this.outlineWidth = Math.min(MAX_OUTLINE_WIDTH, Math.max(MIN_OUTLINE_WIDTH, Math.round(width)));
+    this.chrome?.setOutlineWidth(this.outlineWidth);
   }
 
-  private setDetailsRatio(ratio: number, commit: boolean): void {
-    const normalized =
-      ratio <= 0
-        ? 0
-        : Math.round(Math.min(MAX_DETAILS_RATIO, Math.max(MIN_DETAILS_RATIO, ratio)) * 1000) / 1000;
-    this.plugin.settings.detailsRatio = normalized;
-    this.chrome?.setDetailsRatio(normalized);
-    if (commit) {
-      void this.plugin.saveSettings();
-      this.plugin.applyDetailsRatioToViews();
-    }
+  /** Session-only details-pane ratio; zero resets to the configured default. */
+  private setDetailsRatio(ratio: number): void {
+    const source = ratio <= 0 ? this.plugin.settings.detailsRatio : ratio;
+    this.detailsRatio =
+      Math.round(Math.min(MAX_DETAILS_RATIO, Math.max(MIN_DETAILS_RATIO, source)) * 1000) / 1000;
+    this.chrome?.setDetailsRatio(this.detailsRatio);
   }
 
   private expandOutlineAll(): void {

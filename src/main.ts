@@ -133,14 +133,9 @@ export default class PrgViewerPlugin extends Plugin {
     for (const view of this.views) view.applyOutlineMode();
   }
 
-  /** Applies the persisted outline width to every open pane without touching their caches. */
-  applyOutlineWidthToViews(): void {
-    for (const view of this.views) view.applyOutlineWidth();
-  }
-
-  /** Applies the persisted details-pane ratio to every open pane. */
-  applyDetailsRatioToViews(): void {
-    for (const view of this.views) view.applyDetailsRatio();
+  /** Re-applies the configured default sidebar layout to every open pane. */
+  applyOutlineLayoutToViews(): void {
+    for (const view of this.views) view.applyOutlineLayout();
   }
 
   private async persistSettings(): Promise<void> {

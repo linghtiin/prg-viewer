@@ -30,7 +30,7 @@ test("defaults the outline to a node tree and rejects unknown modes", () => {
   assert.equal(normalizeSettings({ outlineMode: 42 }).outlineMode, "tree");
 });
 
-test("clamps the outline width", () => {
+test("clamps the default outline width", () => {
   assert.equal(DEFAULT_SETTINGS.outlineWidth, 260);
   assert.equal(normalizeSettings({ outlineWidth: 320 }).outlineWidth, 320);
   assert.equal(normalizeSettings({ outlineWidth: 1 }).outlineWidth, 200);
@@ -38,15 +38,15 @@ test("clamps the outline width", () => {
   assert.equal(normalizeSettings({ outlineWidth: Number.NaN }).outlineWidth, 260);
 });
 
-test("clamps the details ratio and treats zero as auto", () => {
-  assert.equal(DEFAULT_SETTINGS.detailsRatio, 0);
-  assert.equal(normalizeSettings({ detailsRatio: 0 }).detailsRatio, 0);
+test("clamps the default details height", () => {
+  assert.equal(DEFAULT_SETTINGS.detailsRatio, 0.4);
   assert.equal(normalizeSettings({ detailsRatio: 0.5 }).detailsRatio, 0.5);
-  assert.equal(normalizeSettings({ detailsRatio: -1 }).detailsRatio, 0);
-  assert.equal(normalizeSettings({ detailsRatio: 0.01 }).detailsRatio, 0.12);
+  assert.equal(normalizeSettings({ detailsRatio: 0.405 }).detailsRatio, 0.41);
+  assert.equal(normalizeSettings({ detailsRatio: 0 }).detailsRatio, 0.4);
+  assert.equal(normalizeSettings({ detailsRatio: 0.01 }).detailsRatio, 0.15);
   assert.equal(normalizeSettings({ detailsRatio: 0.99 }).detailsRatio, 0.85);
-  assert.equal(normalizeSettings({ detailsRatio: Number.NaN }).detailsRatio, 0);
-  assert.equal(normalizeSettings({ detailsRatio: "0.5" }).detailsRatio, 0);
+  assert.equal(normalizeSettings({ detailsRatio: Number.NaN }).detailsRatio, 0.4);
+  assert.equal(normalizeSettings({ detailsRatio: "0.5" }).detailsRatio, 0.4);
 });
 
 test("defaults to wheel-to-zoom and rejects unknown wheel modes", () => {

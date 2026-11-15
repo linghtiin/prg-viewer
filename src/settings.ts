@@ -10,17 +10,20 @@ export interface PrgViewerSettings {
   wheelBehavior: WheelBehavior;
   showOutlineByDefault: boolean;
   outlineMode: OutlineMode;
+  /** Default outline width used when a view opens; changing it in settings persists it. */
   outlineWidth: number;
-  /** Fraction of the sidebar height used by the details pane; 0 means auto. */
+  /** Default details-pane height as a fraction of the sidebar; drag changes are session-only. */
   detailsRatio: number;
   rememberCameraPerFile: boolean;
   maxImageCacheMB: number;
   debugLogging: boolean;
 }
 
+export const DEFAULT_OUTLINE_WIDTH = 260;
 export const MIN_OUTLINE_WIDTH = 200;
 export const MAX_OUTLINE_WIDTH = 720;
-export const MIN_DETAILS_RATIO = 0.12;
+export const DEFAULT_DETAILS_RATIO = 0.4;
+export const MIN_DETAILS_RATIO = 0.15;
 export const MAX_DETAILS_RATIO = 0.85;
 
 export const DEFAULT_SETTINGS: PrgViewerSettings = {
@@ -28,8 +31,8 @@ export const DEFAULT_SETTINGS: PrgViewerSettings = {
   wheelBehavior: "zoom",
   showOutlineByDefault: false,
   outlineMode: "tree",
-  outlineWidth: 260,
-  detailsRatio: 0,
+  outlineWidth: DEFAULT_OUTLINE_WIDTH,
+  detailsRatio: DEFAULT_DETAILS_RATIO,
   rememberCameraPerFile: true,
   maxImageCacheMB: 64,
   debugLogging: false,
@@ -47,11 +50,12 @@ function booleanOr(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
-/** `0` keeps the details pane in auto-height mode; other values are clamped to a usable range. */
-function detailsRatioOrZero(value: unknown): number {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return 0;
+function detailsRatioOrFallback(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return DEFAULT_SETTINGS.detailsRatio;
+  }
   const clamped = Math.min(MAX_DETAILS_RATIO, Math.max(MIN_DETAILS_RATIO, value));
-  return Math.round(clamped * 1000) / 1000;
+  return Math.round(clamped * 100) / 100;
 }
 
 /** Coerces persisted and user-edited data into a valid settings object. */
@@ -69,7 +73,7 @@ export function normalizeSettings(raw: unknown): PrgViewerSettings {
       MIN_OUTLINE_WIDTH,
       MAX_OUTLINE_WIDTH,
     ),
-    detailsRatio: detailsRatioOrZero(source.detailsRatio),
+    detailsRatio: detailsRatioOrFallback(source.detailsRatio),
     rememberCameraPerFile: booleanOr(source.rememberCameraPerFile, DEFAULT_SETTINGS.rememberCameraPerFile),
     maxImageCacheMB: numberInRange(
       source.maxImageCacheMB,

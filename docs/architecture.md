@@ -35,10 +35,11 @@ vault.readBinary(file)
 右侧大纲由 `src/view/outline-panel.ts` 渲染：纯函数 `buildOutlineTree` 以 `document.order` 为顺序，
 以 `Section.children` 为优先的包含关系、以 `LineEdge` 的方向（`from → to`）为补充父子关系构建无环森林
 （首个声明生效，成环链接被忽略；Section 只按包含关系嵌套，连线推导出的同级节点按画布位置排序）。
-`PrgView` 持有当前模式、折叠集合与宽度，模式/宽度写入设置。画布与大纲共用 `flattenOutline` 与
+`PrgView` 持有当前模式、折叠集合、侧栏宽度与详情高度；模式与默认布局来自设置，视图打开时把默认宽度/
+详情高度复制到会话字段，之后拖动只改会话字段（不写 `data.json`）。画布与大纲共用 `flattenOutline` 与
 `resolveOutlineNavigation` 纯函数实现方向键导航：画布走完整先序，大纲走可见行并在左右键时折叠/展开
 分支；两者都只影响侧栏与选择，不触碰 `.prg` 或阅读状态文件。侧栏分为上下两个独立滚动区（大纲 + 详情），
-详情区默认最多占 45% 高度并自行滚动；拖动中间的分隔条可改变详情高度（比例写入设置，双击恢复自动），
+详情区初始高度由设置决定并自行滚动；拖动中间的分隔条只改变当前会话的详情高度（双击恢复设置默认值），
 因此节点再多或详情再长也不会互相挤占。
 
 ## 视图生命周期
@@ -94,11 +95,16 @@ vault.readBinary(file)
   "settings": {
     "background": "none",
     "outlineMode": "tree",
+    "outlineWidth": 260,
+    "detailsRatio": 0.4,
     "rememberCameraPerFile": true,
     "maxImageCacheMB": 64
   }
 }
 ```
+
+`outlineWidth` / `detailsRatio` 是**打开文件时使用的默认布局**，只在设置页修改时写入 `data.json`。
+打开文件后拖动分隔条只改变该视图实例的会话状态，不写盘；下次打开仍按设置值展示。
 
 ```json
 // reading-state.json

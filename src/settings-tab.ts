@@ -1,5 +1,5 @@
 import { type App, PluginSettingTab, Setting } from "obsidian";
-import { MAX_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH } from "./settings.ts";
+import { MAX_DETAILS_RATIO, MAX_OUTLINE_WIDTH, MIN_DETAILS_RATIO, MIN_OUTLINE_WIDTH } from "./settings.ts";
 import type PrgViewerPlugin from "./main.ts";
 
 export class PrgSettingsTab extends PluginSettingTab {
@@ -69,17 +69,32 @@ export class PrgSettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("大纲宽度")
-      .setDesc("右侧大纲的像素宽度；也可以直接拖动大纲左侧边缘调整。")
+      .setName("大纲默认宽度")
+      .setDesc("打开 .prg 时右侧大纲的像素宽度；打开后拖动只影响当前会话，不改写设置。")
       .addSlider((slider) =>
         slider
-          .setLimits(MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH, 10)
+          .setLimits(MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH, 1)
           .setValue(this.plugin.settings.outlineWidth)
           .setDynamicTooltip()
           .onChange(async (value) => {
             this.plugin.settings.outlineWidth = value;
             await this.plugin.saveSettings();
-            this.plugin.applyOutlineWidthToViews();
+            this.plugin.applyOutlineLayoutToViews();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("详情默认高度")
+      .setDesc("打开 .prg 时详情区占侧栏高度的百分比；打开后拖动只影响当前会话，不改写设置。")
+      .addSlider((slider) =>
+        slider
+          .setLimits(Math.round(MIN_DETAILS_RATIO * 100), Math.round(MAX_DETAILS_RATIO * 100), 1)
+          .setValue(Math.round(this.plugin.settings.detailsRatio * 100))
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.detailsRatio = value / 100;
+            await this.plugin.saveSettings();
+            this.plugin.applyOutlineLayoutToViews();
           }),
       );
 

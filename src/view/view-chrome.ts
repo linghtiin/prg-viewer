@@ -16,8 +16,8 @@ export interface ChromeActions {
   resetZoom(): void;
   toggleOutline(): void;
   setOutlineMode(mode: OutlineMode): void;
-  setOutlineWidth(width: number, commit: boolean): void;
-  setDetailsRatio(ratio: number, commit: boolean): void;
+  setOutlineWidth(width: number): void;
+  setDetailsRatio(ratio: number): void;
   copyLink(): void;
   openExternal(): void;
   reload(): void;
@@ -251,7 +251,7 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
     if (Math.abs(delta) > 2) detailsMoved = true;
     if (!detailsMoved) return;
     const height = clampDetailsHeight(detailsStartHeight + delta);
-    actions.setDetailsRatio(height / panelHeight(), false);
+    actions.setDetailsRatio(height / panelHeight());
   });
   const finishDetailsResize = (event: PointerEvent): void => {
     if (detailsDragId !== event.pointerId) return;
@@ -261,18 +261,18 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
       detailsResizer.releasePointerCapture(event.pointerId);
     }
     if (detailsMoved) {
-      actions.setDetailsRatio(clampDetailsHeight(detailsHeight()) / panelHeight(), true);
+      actions.setDetailsRatio(clampDetailsHeight(detailsHeight()) / panelHeight());
     }
     detailsMoved = false;
   };
   detailsResizer.addEventListener("pointerup", finishDetailsResize);
   detailsResizer.addEventListener("pointercancel", finishDetailsResize);
-  detailsResizer.addEventListener("dblclick", () => actions.setDetailsRatio(0, true));
+  detailsResizer.addEventListener("dblclick", () => actions.setDetailsRatio(0));
   detailsResizer.addEventListener("keydown", (event) => {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
     const delta = event.key === "ArrowUp" ? 32 : -32;
-    actions.setDetailsRatio(clampDetailsHeight(detailsHeight() + delta) / panelHeight(), true);
+    actions.setDetailsRatio(clampDetailsHeight(detailsHeight() + delta) / panelHeight());
   });
 
   panel.append(outlineScroll, detailsResizer, detailsSection);
@@ -303,14 +303,14 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
   });
   resizer.addEventListener("pointermove", (event) => {
     if (dragPointerId !== event.pointerId) return;
-    actions.setOutlineWidth(clampWidth(dragStartWidth + (dragStartX - event.clientX)), false);
+    actions.setOutlineWidth(clampWidth(dragStartWidth + (dragStartX - event.clientX)));
   });
   const finishResize = (event: PointerEvent): void => {
     if (dragPointerId !== event.pointerId) return;
     dragPointerId = null;
     resizer.classList.remove("is-resizing");
     if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
-    actions.setOutlineWidth(clampWidth(sidebarWidth()), true);
+    actions.setOutlineWidth(clampWidth(sidebarWidth()));
   };
   resizer.addEventListener("pointerup", finishResize);
   resizer.addEventListener("pointercancel", finishResize);
@@ -318,7 +318,7 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const delta = event.key === "ArrowLeft" ? 16 : -16;
-    actions.setOutlineWidth(clampWidth(sidebarWidth() + delta), true);
+    actions.setOutlineWidth(clampWidth(sidebarWidth() + delta));
   });
 
   body.append(canvasWrap, resizer, sidebar);
