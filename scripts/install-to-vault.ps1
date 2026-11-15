@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   将构建好的 Project Graph Viewer 安装到指定的 Obsidian 库。
@@ -8,10 +8,10 @@
   到 <vault>/.obsidian/plugins/prg-viewer/。不会修改库中的笔记或 .prg 文件。
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:\Users\me\Documents\Mind Vault"
+  powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:\path\to\vault"
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "D:\Vault" -WhatIf
+  powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "D:\path\to\vault" -WhatIf
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(

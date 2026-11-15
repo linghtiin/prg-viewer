@@ -110,7 +110,7 @@ vault.readBinary(file)
 // reading-state.json
 {
   "version": 1,
-  "cameras": { "技术积累/AI/知识图谱-AI.prg": { "x": -1200, "y": -800, "scale": 0.4 } }
+  "cameras": { "notes/example.prg": { "x": -1200, "y": -800, "scale": 0.4 } }
 }
 ```
 

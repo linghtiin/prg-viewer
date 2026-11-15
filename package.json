@@ -1,8 +1,8 @@
 {
   "name": "prg-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Obsidian plugin that opens Project Graph (.prg) canvas files.",
+  "description": "Open Project Graph .prg canvas files in a read-only viewer with nodes, edges, images, LaTeX and sections.",
   "type": "module",
   "main": "main.js",
   "engines": {
@@ -22,7 +22,8 @@
     "test:coverage": "node --test --test-isolation=none --experimental-test-coverage --test-coverage-lines=85 --test-coverage-functions=85 --test-coverage-branches=75 \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
     "inspect": "node --experimental-strip-types scripts/inspect-prg.ts",
     "fixture": "node --experimental-strip-types scripts/make-fixture.ts",
-    "bump": "node scripts/bump-version.mjs",
+    "bump": "node --experimental-strip-types scripts/bump-version.ts",
+    "check:version": "node --experimental-strip-types scripts/check-version.ts",
     "verify": "node scripts/verify.mjs"
   },
   "dependencies": {

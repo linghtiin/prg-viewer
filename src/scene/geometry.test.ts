@@ -4,17 +4,27 @@ import {
   addVec,
   clamp,
   cubicPointAt,
+  distance,
+  expandRect,
+  lerp,
   normalizeRect,
   normalizeVec,
   pointInRect,
+  rectBottom,
   rectCenter,
   rectEdgeNormalAt,
+  rectIsEmpty,
   rectLineIntersectionFromCenter,
+  rectRight,
+  rectsEqual,
   rectsIntersect,
   rotateVecDegrees,
   roundRect,
+  scaleVec,
+  subtractVec,
   unionRect,
   unionRects,
+  vec,
   vecLength,
 } from "./geometry.ts";
 
@@ -88,4 +98,21 @@ test("cubicPointAt interpolates between the endpoints", () => {
   assert.deepEqual(cubicPointAt(start, control1, control2, end, 1), end);
   const middle = cubicPointAt(start, control1, control2, end, 0.5);
   assert.ok(middle.x > 0 && middle.x < 30);
+});
+
+test("vector construction, arithmetic and rectangle edges stay consistent", () => {
+  assert.deepEqual(vec(1, 2), { x: 1, y: 2 });
+  assert.deepEqual(subtractVec({ x: 5, y: 4 }, { x: 2, y: 1 }), { x: 3, y: 3 });
+  assert.deepEqual(scaleVec({ x: 2, y: -3 }, 2), { x: 4, y: -6 });
+  assert.equal(distance({ x: 1, y: 2 }, { x: 4, y: 6 }), 5);
+  assert.equal(lerp(0, 10, 0.25), 2.5);
+
+  const rect = { x: 10, y: 20, width: 30, height: 40 };
+  assert.equal(rectRight(rect), 40);
+  assert.equal(rectBottom(rect), 60);
+  assert.equal(rectIsEmpty({ x: 0, y: 0, width: 0, height: 5 }), true);
+  assert.equal(rectIsEmpty(rect), false);
+  assert.equal(rectsEqual(rect, { x: 10, y: 20, width: 30, height: 40 }), true);
+  assert.equal(rectsEqual(rect, { x: 10, y: 20, width: 31, height: 40 }), false);
+  assert.deepEqual(expandRect(rect, 5), { x: 5, y: 15, width: 40, height: 50 });
 });

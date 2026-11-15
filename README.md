@@ -1,5 +1,7 @@
 # Project Graph Viewer
 
+A read-only Obsidian plugin that renders Project Graph `.prg` canvases — nodes, edges, images, LaTeX and sections.
+
 在 Obsidian 中直接打开 [Project Graph](https://graphif.dev) 的 `.prg` 画布文件：节点、连线、图片、
 LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩放、搜索、大纲与深链。
 
@@ -21,26 +23,20 @@ LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩�
 
 ## 安装
 
-### 方式一：安装脚本（推荐）
+### 从 Obsidian 社区插件安装
 
-```powershell
-# 在仓库根目录执行
-pnpm install
-pnpm build
-powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:\Users\<你>\Documents\Mind Vault"
-```
+社区目录收录后，可在 **设置 → 第三方插件 → 浏览** 中搜索 **Project Graph Viewer**，安装并启用。
+收录前请使用下面的手动安装。
 
-然后在 Obsidian 中打开 **设置 → 第三方插件**，启用 **Project Graph Viewer**。
+### 手动安装
 
-### 方式二：手动复制
+1. 从本仓库的 [Releases](../../releases) 下载 `main.js`、`manifest.json`、`styles.css`。
+2. 在库的配置目录中创建插件文件夹 `<库>/.obsidian/plugins/prg-viewer/`，把三个文件放进去。
+3. 重新加载 Obsidian，在 **设置 → 第三方插件** 中启用 **Project Graph Viewer**。
 
-把 `main.js`、`manifest.json`、`styles.css` 复制到：
+> 插件文件夹必须命名为 `prg-viewer`，与 `manifest.json` 的 `id` 一致。使用自定义配置目录时按实际路径放置。
 
-```
-<你的库>/.obsidian/plugins/prg-viewer/
-```
-
-重新加载 Obsidian 并启用插件。
+从源码构建并安装到测试库的步骤见 [docs/development.md](docs/development.md)。
 
 ## 使用
 
@@ -96,10 +92,11 @@ powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:
 复制得到的链接形如：
 
 ```
-prg:///C:/Users/me/Documents/Mind%20Vault/map.prg?target=<uuid>
+prg:///path/to/vault/map.prg?target=<uuid>
 ```
 
-可粘贴到任意笔记中；点击后由 Project Graph 打开对应文件并定位节点。`prg://` 仅桌面端可用。
+Windows 盘符路径会写成 `prg:///C:/notes/map.prg?target=<uuid>`；路径中的空格与中文会做 URL 编码。
+链接可粘贴到任意笔记中，点击后由 Project Graph 打开对应文件并定位节点。`prg://` 仅桌面端可用。
 
 ### 命令
 
@@ -123,22 +120,13 @@ prg:///C:/Users/me/Documents/Mind%20Vault/map.prg?target=<uuid>
 
 ## 开发
 
-要求：Node ≥ 22.18、pnpm 11。
-
-```bash
-pnpm install
-pnpm dev          # esbuild watch，改动后重新复制到库中
-pnpm verify       # format + lint + typecheck + test + build
-pnpm test:coverage
-pnpm inspect fixtures/sample.prg     # 解码任意 .prg 并输出摘要
-```
-
-目录结构、分层约束与提交规范见 [CONTRIBUTING.md](CONTRIBUTING.md) 与
-[docs/architecture.md](docs/architecture.md)。PR 请附测试与 CHANGELOG 更新。
+从源码构建、安装到测试库、测试与检查命令见 [docs/development.md](docs/development.md)；目录结构、
+分层约束与提交规范见 [CONTRIBUTING.md](CONTRIBUTING.md)；发版流程见 [docs/releasing.md](docs/releasing.md)。
 
 ## 版本
 
-当前 `0.1.0`。变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+版本号以 [manifest.json](manifest.json) 为准；每个版本的变更见 [CHANGELOG.md](CHANGELOG.md)，
+发版与分支规范见 [docs/releasing.md](docs/releasing.md)。
 
 ## 许可与致谢
 

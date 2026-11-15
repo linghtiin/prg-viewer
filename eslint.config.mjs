@@ -4,7 +4,15 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["main.js", "main.js.map", "coverage/**", "node_modules/**", "fixtures/**", "pnpm-lock.yaml"],
+    ignores: [
+      "main.js",
+      "main.js.map",
+      "coverage/**",
+      "node_modules/**",
+      "fixtures/**",
+      "pnpm-lock.yaml",
+      ".tmp/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

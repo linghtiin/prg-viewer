@@ -3,14 +3,11 @@ import test from "node:test";
 import { buildPrgUri } from "./deep-link.ts";
 
 test("builds a Windows absolute link", () => {
-  assert.equal(
-    buildPrgUri({ path: "C:\\Users\\me\\Documents\\Mind Vault\\map.prg" }),
-    "prg:///C:/Users/me/Documents/Mind%20Vault/map.prg",
-  );
+  assert.equal(buildPrgUri({ path: "C:\\Notes\\My Maps\\map.prg" }), "prg:///C:/Notes/My%20Maps/map.prg");
 });
 
 test("builds a POSIX absolute link", () => {
-  assert.equal(buildPrgUri({ path: "/home/me/maps/map.prg" }), "prg:///home/me/maps/map.prg");
+  assert.equal(buildPrgUri({ path: "/home/user/maps/map.prg" }), "prg:///home/user/maps/map.prg");
 });
 
 test("appends target, location and zoom", () => {

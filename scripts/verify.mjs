@@ -33,6 +33,7 @@ const steps = [
   { name: "format:check", args: [tools.prettier, "--check", "."] },
   { name: "lint", args: [tools.eslint, "."] },
   { name: "typecheck", args: [tools.tsc, "--noEmit"] },
+  { name: "check:version", args: ["--experimental-strip-types", join(root, "scripts", "check-version.ts")] },
   { name: "test", args: testArgs },
   { name: "build", args: [join(root, "scripts", "build.mjs")] },
 ];

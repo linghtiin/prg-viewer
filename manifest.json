@@ -1,9 +1,9 @@
 {
   "id": "prg-viewer",
   "name": "Project Graph Viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minAppVersion": "1.6.0",
-  "description": "在 Obsidian 中打开 Project Graph 的 .prg 文件：节点、连线、图片、LaTeX 与分组框的只读查看器。",
-  "author": "wrqal",
+  "description": "Open Project Graph .prg canvas files in a read-only viewer with nodes, edges, images, LaTeX and sections.",
+  "author": "Linghtiin",
   "isDesktopOnly": false
 }

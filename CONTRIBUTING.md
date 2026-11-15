@@ -8,23 +8,13 @@
 - pnpm 11（`packageManager` 已固定版本）
 - Obsidian ≥ 1.6（桌面端用于冒烟测试）
 
-```bash
-pnpm install
-pnpm verify        # 提交前必须全绿
-```
-
-> Windows 说明：`pnpm-workspace.yaml` 使用 `nodeLinker: hoisted`（esbuild 可选平台包在 junction
-> 下无法被解析），并显式禁止 esbuild 的安装脚本（它自带预编译二进制）。请勿改回默认布局，除非同时
-> 验证 Windows 与 CI 都能构建。
+安装依赖、构建、安装到测试库与全部命令见 [docs/development.md](docs/development.md)。
+提交前 `pnpm verify` 必须全绿。
 
 ## 开发循环
 
-1. `pnpm dev`（esbuild watch，输出根目录 `main.js`）
-2. 将 `main.js`、`manifest.json`、`styles.css` 复制/链接到测试库
-   `<vault>/.obsidian/plugins/prg-viewer/`
-3. 在 Obsidian 中重新加载插件（或使用 Hot Reload 类插件）
-
-解析层与几何层的改动应先在 Node 下用 `pnpm test` 验证，不要只靠界面观察。
+见 [docs/development.md](docs/development.md)。解析层与几何层的改动应先在 Node 下用 `pnpm test`
+验证，不要只靠界面观察。
 
 ## 代码结构与约束
 
@@ -60,7 +50,9 @@ src/main.ts   插件入口
 
 示例：`feat: support nested section frames`
 
-分支：主干 + 短生命周期分支，命名 `feat/<topic>`、`fix/<topic>`、`docs/<topic>`。
+分支：主干 + 短生命周期分支，命名 `feat/<topic>`、`fix/<topic>`、`docs/<topic>`、`chore/<topic>`，
+始终从最新 `master` 切出。功能分支**不要**修改 `package.json` / `manifest.json` / `versions.json`，
+版本号只在发版分支推进（见下）。
 
 ## PR 清单（Definition of Done）
 
@@ -68,6 +60,7 @@ src/main.ts   插件入口
 - [ ] 新逻辑有单测；覆盖率不低于门槛（行 85 / 分支 75 / 函数 85）
 - [ ] 解析或渲染行为变化更新了 `docs/compatibility.md`
 - [ ] 用户可见变化更新了 `CHANGELOG.md` 的 `Unreleased`
+- [ ] 未改动 `package.json` / `manifest.json` / `versions.json`（发版 PR 除外）
 - [ ] 无新增 `any`、无 Obsidian 依赖泄漏到核心层
 - [ ] 涉及界面变化时附截图（浅色 + 深色）
 
@@ -88,16 +81,14 @@ src/main.ts   插件入口
 
 - 单元测试：Node 内置测试运行器（`node:test` + `node:assert/strict`），文件同目录 `*.test.ts`。
 - 夹具：`pnpm fixture` 生成 `fixtures/sample.prg`（合成内容，可提交）。
-- 真实文件体检：`pnpm inspect <file.prg> [--json]`；基准见 `docs/compatibility.md`。
+- 回归基准：`pnpm inspect fixtures/sample.prg --json`，计数见 `docs/compatibility.md`。
+- 真实 `.prg` 只在本机自查，不要把文件名或路径写入仓库与文档。
 - 手工冒烟：见 `docs/testing.md`，重点验证只读性（打开前后 SHA256 不变）。
 
 ## 版本与发布
 
-```bash
-pnpm bump 0.2.0     # 同步 package.json / manifest.json / versions.json，并检查 CHANGELOG
-git commit -am "chore(release): 0.2.0"
-git tag v0.2.0
-git push origin main --tags
-```
+功能分支只维护 `CHANGELOG.md` 的 `Unreleased`；发版时从 `master` 切出 `chore/release-x.y.z`，
+运行 `pnpm bump x.y.z`（提升 CHANGELOG 并同步三个版本文件），再 `pnpm check:version && pnpm verify`。
+合并后使用**裸版本号** `x.y.z` 打 tag 并推送，GitHub release 才会构建三个资产。
 
-`release.yml` 会在 tag 上构建并发布 `main.js`、`manifest.json`、`styles.css`。
+完整的版本策略、文件矩阵、检查表与回滚方式见 [docs/releasing.md](docs/releasing.md)。
