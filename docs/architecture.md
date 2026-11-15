@@ -72,16 +72,35 @@ vault.readBinary(file)
 
 ## 状态持久化
 
-写入插件 `data.json`，不触碰 vault 文件：
+设置与阅读状态分开保存在插件目录（`<配置目录>/plugins/prg-viewer/`），不触碰 vault 笔记或 `.prg` 文件：
+
+| 文件                 | 内容                   | 写入时机                           |
+| -------------------- | ---------------------- | ---------------------------------- |
+| `data.json`          | 设置项（`settings`）   | 仅在用户修改设置时                 |
+| `reading-state.json` | 每个 `.prg` 的相机状态 | 打开 / 平移 / 缩放后（500ms 防抖） |
 
 ```json
+// data.json
 {
-  "settings": { "background": "none", "rememberCameraPerFile": true, "maxImageCacheMB": 64 },
+  "settings": { "background": "none", "rememberCameraPerFile": true, "maxImageCacheMB": 64 }
+}
+```
+
+```json
+// reading-state.json
+{
+  "version": 1,
   "cameras": { "技术积累/AI/知识图谱-AI.prg": { "x": -1200, "y": -800, "scale": 0.4 } }
 }
 ```
 
-相机保存有 500ms 防抖；`rememberCameraPerFile` 关闭时不写入。
+- 路径键排序、2 空格缩进、末尾换行；内容未变化时不写盘，连续缩放只落一次盘。
+- 旧版本把 `cameras` 写在 `data.json`：加载时与 `reading-state.json` 合并（后者优先），新文件写入成功后
+  才把 `data.json` 重写为仅含 `settings`，因此升级只会产生一次 `data.json` 变更。
+- `reading-state.json` 缺失或损坏时按空状态处理；写入失败只退化为“不记忆视图”，不影响阅读。
+- `rememberCameraPerFile` 关闭时不写入阅读状态。
+- 建议把 `.obsidian/plugins/prg-viewer/reading-state.json` 加入库仓库的 `.gitignore`：阅读状态变化频繁，
+  而设置仍可被版本管理追踪。
 
 ## 测试边界
 

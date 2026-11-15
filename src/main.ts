@@ -1,20 +1,40 @@
-import { Plugin, TFile } from "obsidian";
+import { normalizePath, Plugin, TFile } from "obsidian";
 import { copyFileLink, openFileInProjectGraph, openPrgFilePicker, registerCommands } from "./commands.ts";
 import { PRG_EXTENSION, VIEW_TYPE_PRG } from "./constants.ts";
+import {
+  mergeCameraStates,
+  normalizeCameraStates,
+  parseViewState,
+  readingStatePath,
+  serializeViewState,
+  type CameraStateMap,
+} from "./reading-state.ts";
 import type { CameraState } from "./scene/camera.ts";
 import { DEFAULT_SETTINGS, normalizeSettings, type PrgViewerSettings } from "./settings.ts";
 import { PrgSettingsTab } from "./settings-tab.ts";
+import { createLogger, type Logger } from "./util/log.ts";
 import { PrgView } from "./view/prg-view.ts";
 
+/**
+ * `data.json` only keeps settings now. `cameras` is still read once so installs
+ * that predate the reading-state file migrate without losing their view
+ * positions; it is dropped after a successful migration.
+ */
 interface PluginData {
   settings?: unknown;
-  cameras?: Record<string, CameraState>;
+  cameras?: unknown;
 }
+
+/** Debounce for per-file camera writes (one write per finished pan/zoom gesture). */
+const CAMERA_SAVE_DEBOUNCE_MS = 500;
 
 export default class PrgViewerPlugin extends Plugin {
   override settings: PrgViewerSettings = DEFAULT_SETTINGS;
-  private cameras: Record<string, CameraState> = {};
-  private saveTimer: number | null = null;
+  private cameras: CameraStateMap = {};
+  private cameraSaveTimer: number | null = null;
+  private stateWriteChain: Promise<void> = Promise.resolve();
+  private lastStateText: string | null = null;
+  private readonly logger: Logger = createLogger("prg-viewer", () => this.settings.debugLogging);
 
   override async onload(): Promise<void> {
     await this.loadSettings();
@@ -49,26 +69,36 @@ export default class PrgViewerPlugin extends Plugin {
   }
 
   override onunload(): void {
-    if (this.saveTimer !== null) {
-      window.clearTimeout(this.saveTimer);
-      this.saveTimer = null;
+    if (this.cameraSaveTimer !== null) {
+      window.clearTimeout(this.cameraSaveTimer);
+      this.cameraSaveTimer = null;
+      // Best effort: Obsidian does not await onunload, but the write usually lands.
+      void this.writeReadingState();
     }
   }
 
+  /** Loads settings and migrates legacy per-file cameras out of `data.json`. */
   async loadSettings(): Promise<void> {
     const raw: unknown = await this.loadData();
-    const data = raw as PluginData | null;
+    const data = raw !== null && typeof raw === "object" && !Array.isArray(raw) ? (raw as PluginData) : null;
     this.settings = normalizeSettings(data?.settings);
-    this.cameras =
-      data?.cameras && typeof data.cameras === "object" && !Array.isArray(data.cameras) ? data.cameras : {};
+
+    const hasLegacy = data !== null && Object.hasOwn(data, "cameras");
+    const legacy = hasLegacy ? normalizeCameraStates(data?.cameras) : null;
+    const storedText = await this.readReadingState();
+    const stored = storedText === null ? null : parseViewState(storedText);
+    this.cameras = mergeCameraStates(stored, legacy);
+    this.lastStateText = storedText !== null && stored !== null ? serializeViewState(stored) : null;
+
+    if (hasLegacy) {
+      const saved = await this.writeReadingState();
+      // Only drop the old copy from data.json once the reading state is on disk.
+      if (saved) await this.persistSettings();
+    }
   }
 
   async saveSettings(): Promise<void> {
-    if (this.saveTimer !== null) {
-      window.clearTimeout(this.saveTimer);
-      this.saveTimer = null;
-    }
-    await this.persist();
+    await this.persistSettings();
   }
 
   getCameraState(path: string): CameraState | null {
@@ -78,6 +108,12 @@ export default class PrgViewerPlugin extends Plugin {
   setCameraState(path: string, state: CameraState): void {
     this.cameras[path] = state;
     this.schedulePersist();
+  }
+
+  /** Vault path of the reading-state file (shown in settings, useful for .gitignore). */
+  getReadingStatePath(): string {
+    const configDir = this.app.vault.configDir;
+    return normalizePath(readingStatePath(configDir, this.manifest.dir, this.manifest.id));
   }
 
   get views(): PrgView[] {
@@ -92,16 +128,48 @@ export default class PrgViewerPlugin extends Plugin {
     for (const view of this.views) view.applySettings();
   }
 
-  private schedulePersist(): void {
-    if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
-    this.saveTimer = window.setTimeout(() => {
-      this.saveTimer = null;
-      void this.persist();
-    }, 500);
+  private async persistSettings(): Promise<void> {
+    await this.saveData({ settings: this.settings });
   }
 
-  private async persist(): Promise<void> {
-    const data: PluginData = { settings: this.settings, cameras: this.cameras };
-    await this.saveData(data);
+  private async readReadingState(): Promise<string | null> {
+    try {
+      const adapter = this.app.vault.adapter;
+      const path = this.getReadingStatePath();
+      if (!(await adapter.exists(path))) return null;
+      return await adapter.read(path);
+    } catch (error) {
+      this.logger.warn("读取阅读状态文件失败", error);
+      return null;
+    }
+  }
+
+  /** Serialises writes so quick gestures cannot interleave; resolves to "state is on disk". */
+  private async writeReadingState(): Promise<boolean> {
+    const text = serializeViewState(this.cameras);
+    if (text === this.lastStateText) return true;
+    const path = this.getReadingStatePath();
+    let failed = false;
+    this.stateWriteChain = this.stateWriteChain
+      .then(async () => {
+        const current = serializeViewState(this.cameras);
+        if (current === this.lastStateText) return;
+        await this.app.vault.adapter.write(path, current);
+        this.lastStateText = current;
+      })
+      .catch((error: unknown) => {
+        failed = true;
+        this.logger.warn("写入阅读状态文件失败", error);
+      });
+    await this.stateWriteChain;
+    return !failed;
+  }
+
+  private schedulePersist(): void {
+    if (this.cameraSaveTimer !== null) window.clearTimeout(this.cameraSaveTimer);
+    this.cameraSaveTimer = window.setTimeout(() => {
+      this.cameraSaveTimer = null;
+      void this.writeReadingState();
+    }, CAMERA_SAVE_DEBOUNCE_MS);
   }
 }

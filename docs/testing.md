@@ -80,3 +80,5 @@ $f = "C:\Users\<你>\Documents\Mind Vault\技术积累\AI\知识图谱-AI.prg"
 ```
 
 13. 异常路径：把 `fixtures/sample.prg` 改名为 `.zip` 以外的损坏文件后打开，应显示错误卡而不是崩溃。
+14. 状态分离：打开并平移/缩放后，插件目录出现 `reading-state.json`，而 `data.json` 的内容与修改时间
+    不变（`Get-FileHash` 校验）；重启 Obsidian 后相机位置恢复；关闭“按文件记忆视图”后不再写入。

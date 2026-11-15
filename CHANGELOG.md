@@ -11,6 +11,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Wheel behaviour setting: wheel zooms by default (`Ctrl/⌘ + wheel` pans) and the two modes can be swapped.
 - Transparent nodes get a translucent fill when zoomed out, keeping their silhouette readable.
 
+### Changed
+
+- Reading state (per-file zoom and position) moved from `data.json` to `reading-state.json` in the plugin
+  folder, so `data.json` only changes when settings change; this file can be added to `.gitignore`.
+  Cameras stored in older `data.json` files are migrated on first load.
+
 ### Fixed
 
 - Section frames were dropped because their geometry is serialized as `_collisionBoxNormal`; collapsed

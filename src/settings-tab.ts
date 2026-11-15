@@ -54,7 +54,9 @@ export class PrgSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("按文件记忆视图")
-      .setDesc("记住每个 .prg 的缩放和位置。只写入插件配置，不会修改 .prg 文件。")
+      .setDesc(
+        `记住每个 .prg 的缩放和位置。状态单独写入 ${this.plugin.getReadingStatePath()}（可加入 .gitignore），不会修改 .prg 文件。`,
+      )
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.rememberCameraPerFile).onChange(async (value) => {
           this.plugin.settings.rememberCameraPerFile = value;

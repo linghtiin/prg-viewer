@@ -16,7 +16,7 @@ LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩�
 - 分组框：支持嵌套与折叠状态
 - 深链：复制 `prg://` 链接（文件/节点/当前视野），或在 Project Graph 中打开
 - 跟随 Obsidian 主题（浅色/深色），可开启网格背景
-- 每个文件记住缩放与位置（仅写插件配置）
+- 每个文件记住缩放与位置（写入插件目录的 `reading-state.json`，不修改 `.prg` 文件）
 
 ## 安装
 
@@ -60,6 +60,24 @@ powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:
 图片缓存上限、调试日志。滚轮缩放以光标为锚点。
 
 工具条：适配、放大、缩小、100%、搜索、大纲、复制深链、在 Project Graph 中打开、重新加载。
+
+### 配置与阅读状态
+
+插件目录（`<库>/.obsidian/plugins/prg-viewer/`）下有两个文件：
+
+| 文件                 | 内容                     | 写入时机                     |
+| -------------------- | ------------------------ | ---------------------------- |
+| `data.json`          | 插件设置                 | 仅在修改设置时               |
+| `reading-state.json` | 每个 `.prg` 的缩放与位置 | 打开、平移、缩放之后（防抖） |
+
+`.prg` 文件本身始终只读。若库用 Git 管理，可以只忽略阅读状态，让设置仍可被追踪：
+
+```gitignore
+.obsidian/plugins/prg-viewer/reading-state.json
+```
+
+（使用自定义配置目录时按实际路径调整。）旧版本把阅读状态存在 `data.json` 的 `cameras` 字段里；升级后
+首次加载会自动迁移，`data.json` 只会变化这一次。
 
 ### 深链
 
