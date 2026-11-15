@@ -32,6 +32,15 @@ vault.readBinary(file)
   → DOM
 ```
 
+右侧大纲由 `src/view/outline-panel.ts` 渲染：纯函数 `buildOutlineTree` 以 `document.order` 为顺序，
+以 `Section.children` 为优先的包含关系、以 `LineEdge` 的方向（`from → to`）为补充父子关系构建无环森林
+（首个声明生效，成环链接被忽略；Section 只按包含关系嵌套，连线推导出的同级节点按画布位置排序）。
+`PrgView` 持有当前模式、折叠集合与宽度，模式/宽度写入设置。画布与大纲共用 `flattenOutline` 与
+`resolveOutlineNavigation` 纯函数实现方向键导航：画布走完整先序，大纲走可见行并在左右键时折叠/展开
+分支；两者都只影响侧栏与选择，不触碰 `.prg` 或阅读状态文件。侧栏分为上下两个独立滚动区（大纲 + 详情），
+详情区默认最多占 45% 高度并自行滚动；拖动中间的分隔条可改变详情高度（比例写入设置，双击恢复自动），
+因此节点再多或详情再长也不会互相挤占。
+
 ## 视图生命周期
 
 1. `onOpen`：构建工具栏/画布/侧栏，创建渲染器、LaTeX 浮层、图片缓存、交互控制器与 `ResizeObserver`。
@@ -82,7 +91,12 @@ vault.readBinary(file)
 ```json
 // data.json
 {
-  "settings": { "background": "none", "rememberCameraPerFile": true, "maxImageCacheMB": 64 }
+  "settings": {
+    "background": "none",
+    "outlineMode": "tree",
+    "rememberCameraPerFile": true,
+    "maxImageCacheMB": 64
+  }
 }
 ```
 

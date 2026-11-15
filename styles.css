@@ -137,6 +137,32 @@
 
 /* sidebar --------------------------------------------------------------- */
 
+.prg-viewer-resizer {
+  position: relative;
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Widen the grab area without taking more layout space. */
+.prg-viewer-resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 -3px;
+}
+
+.prg-viewer-resizer:hover,
+.prg-viewer-resizer.is-resizing {
+  background-color: var(--background-modifier-hover);
+}
+
+.prg-viewer-resizer:focus-visible {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
+}
+
 .prg-viewer-sidebar {
   position: relative;
   flex: 0 0 260px;
@@ -164,12 +190,101 @@
   flex: 0 0 auto;
 }
 
+.prg-viewer-sidebar-header > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.prg-viewer-sidebar-header > button:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
 .prg-viewer-panel {
-  overflow-y: auto;
-  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+  padding: 0;
   font-size: var(--font-ui-small);
+}
+
+.prg-viewer-outline-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+}
+
+.prg-viewer-details-section {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  max-height: 45%;
+  min-height: 0;
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 0 10px;
+}
+
+.prg-viewer-details-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.prg-viewer-details-resizer {
+  position: relative;
+  flex: 0 0 5px;
+  cursor: row-resize;
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Widen the grab area without taking more layout space. */
+.prg-viewer-details-resizer::before {
+  content: "";
+  position: absolute;
+  inset: -3px 0;
+}
+
+.prg-viewer-details-resizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background-color: var(--background-modifier-border);
+}
+
+.prg-viewer-details-resizer:hover::after,
+.prg-viewer-details-resizer.is-resizing::after {
+  background-color: var(--text-faint);
+}
+
+.prg-viewer-details-resizer:hover,
+.prg-viewer-details-resizer.is-resizing {
+  background-color: var(--background-modifier-hover);
+}
+
+.prg-viewer-details-resizer:focus-visible {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
 }
 
 .prg-viewer-panel h4 {
@@ -180,14 +295,34 @@
   color: var(--text-faint);
 }
 
-.prg-viewer-outline-item {
+.prg-viewer-panel .prg-viewer-details-subheading {
+  margin-top: 14px;
+}
+
+.prg-viewer-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Scoped above Obsidian's `button:not(.clickable-icon)` so list rows stay flat
+   and compact instead of inheriting the default button chrome. */
+.prg-viewer-panel .prg-viewer-outline-item {
   display: block;
   width: 100%;
+  height: auto;
   text-align: left;
   padding: 3px 6px;
   border: none;
   border-radius: var(--radius-s);
   background: transparent;
+  box-shadow: none;
   color: var(--text-normal);
   cursor: pointer;
   white-space: nowrap;
@@ -196,13 +331,120 @@
   font-size: var(--font-ui-small);
 }
 
-.prg-viewer-outline-item:hover {
+.prg-viewer-panel .prg-viewer-outline-item:hover {
   background-color: var(--background-modifier-hover);
 }
 
-.prg-viewer-outline-item.is-selected {
+.prg-viewer-panel .prg-viewer-outline-item.is-selected {
   background-color: var(--background-modifier-active-hover);
   color: var(--text-on-accent);
+}
+
+.prg-viewer-outline-modes {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.prg-viewer-outline-modes .prg-viewer-outline-mode {
+  height: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.prg-viewer-outline-modes .prg-viewer-outline-mode:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.prg-viewer-outline-modes .prg-viewer-outline-mode.is-active {
+  border-color: transparent;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.prg-viewer-outline-tools {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding-top: 2px;
+  background-color: var(--background-secondary);
+}
+
+.prg-viewer-outline-tools .prg-viewer-outline-tool {
+  height: auto;
+  padding: 1px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.prg-viewer-outline-tools .prg-viewer-outline-tool:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.prg-viewer-outline-tree,
+.prg-viewer-outline-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.prg-viewer-outline-tree ul {
+  margin-left: 3px;
+  padding-left: 12px;
+  border-left: 1px solid var(--background-modifier-border);
+}
+
+.prg-viewer-outline-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.prg-viewer-outline-row .prg-viewer-outline-toggle,
+.prg-viewer-outline-row .prg-viewer-outline-spacer {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+}
+
+.prg-viewer-outline-row .prg-viewer-outline-toggle {
+  cursor: pointer;
+}
+
+.prg-viewer-outline-row .prg-viewer-outline-toggle:hover {
+  color: var(--text-normal);
+}
+
+.prg-viewer-outline-row .prg-viewer-outline-item {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
 }
 
 .prg-viewer-outline-empty,
@@ -230,6 +472,18 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   margin: 4px 0 8px;
+}
+
+.prg-viewer-details-primary {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background-color: var(--background-secondary-alt);
+}
+
+.prg-viewer-details-primary .prg-viewer-details-text {
+  margin: 0;
 }
 
 .prg-viewer-details-image {

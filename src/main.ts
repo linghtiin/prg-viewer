@@ -128,6 +128,21 @@ export default class PrgViewerPlugin extends Plugin {
     for (const view of this.views) view.applySettings();
   }
 
+  /** Keeps every open pane's outline in sync when one of them switches the mode. */
+  applyOutlineModeToViews(): void {
+    for (const view of this.views) view.applyOutlineMode();
+  }
+
+  /** Applies the persisted outline width to every open pane without touching their caches. */
+  applyOutlineWidthToViews(): void {
+    for (const view of this.views) view.applyOutlineWidth();
+  }
+
+  /** Applies the persisted details-pane ratio to every open pane. */
+  applyDetailsRatioToViews(): void {
+    for (const view of this.views) view.applyDetailsRatio();
+  }
+
   private async persistSettings(): Promise<void> {
     await this.saveData({ settings: this.settings });
   }

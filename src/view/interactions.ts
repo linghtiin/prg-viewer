@@ -1,6 +1,7 @@
 import type { Camera, Viewport } from "../scene/camera.ts";
 import { resolveWheelAction, type WheelBehavior } from "../scene/input.ts";
 import { hitTestNode, type Scene } from "../scene/scene.ts";
+import type { NavigationDirection } from "./outline-panel.ts";
 
 export interface InteractionHost {
   element: HTMLElement;
@@ -12,6 +13,7 @@ export interface InteractionHost {
   onSelect(id: string | null): void;
   onHover(id: string | null): void;
   onFocus(id: string): void;
+  onNavigate(direction: NavigationDirection): void;
   onFit(): void;
   onResetZoom(): void;
   onClearSelection(): void;
@@ -167,17 +169,53 @@ export class InteractionController {
         this.host.onFocusSearch();
         return;
       case "ArrowLeft":
-        camera.panByScreen(KEY_PAN, 0);
-        break;
+        if (event.shiftKey) {
+          camera.panByScreen(KEY_PAN, 0);
+          break;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          handled = false;
+          break;
+        }
+        this.host.onNavigate("left");
+        event.preventDefault();
+        return;
       case "ArrowRight":
-        camera.panByScreen(-KEY_PAN, 0);
-        break;
+        if (event.shiftKey) {
+          camera.panByScreen(-KEY_PAN, 0);
+          break;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          handled = false;
+          break;
+        }
+        this.host.onNavigate("right");
+        event.preventDefault();
+        return;
       case "ArrowUp":
-        camera.panByScreen(0, KEY_PAN);
-        break;
+        if (event.shiftKey) {
+          camera.panByScreen(0, KEY_PAN);
+          break;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          handled = false;
+          break;
+        }
+        this.host.onNavigate("up");
+        event.preventDefault();
+        return;
       case "ArrowDown":
-        camera.panByScreen(0, -KEY_PAN);
-        break;
+        if (event.shiftKey) {
+          camera.panByScreen(0, -KEY_PAN);
+          break;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          handled = false;
+          break;
+        }
+        this.host.onNavigate("down");
+        event.preventDefault();
+        return;
       default:
         handled = false;
     }

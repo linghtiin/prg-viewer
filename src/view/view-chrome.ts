@@ -1,4 +1,11 @@
-﻿import { setIcon } from "obsidian";
+import { setIcon } from "obsidian";
+import {
+  MAX_DETAILS_RATIO,
+  MAX_OUTLINE_WIDTH,
+  MIN_DETAILS_RATIO,
+  MIN_OUTLINE_WIDTH,
+  type OutlineMode,
+} from "../settings.ts";
 
 /** Builds the static DOM of a PRG view and exposes the handles the view needs. */
 
@@ -8,6 +15,9 @@ export interface ChromeActions {
   zoomOut(): void;
   resetZoom(): void;
   toggleOutline(): void;
+  setOutlineMode(mode: OutlineMode): void;
+  setOutlineWidth(width: number, commit: boolean): void;
+  setDetailsRatio(ratio: number, commit: boolean): void;
   copyLink(): void;
   openExternal(): void;
   reload(): void;
@@ -28,9 +38,14 @@ export interface ChromeHandles {
   searchInput: HTMLInputElement;
   sidebar: HTMLElement;
   outlinePanel: HTMLElement;
+  outlineScroll: HTMLElement;
   detailsPanel: HTMLElement;
+  detailsScroll: HTMLElement;
   outlineButton: HTMLButtonElement;
   setLoading(visible: boolean): void;
+  setOutlineMode(mode: OutlineMode): void;
+  setOutlineWidth(width: number): void;
+  setDetailsRatio(ratio: number): void;
   showError(title: string, message: string, details: string | null, canOpenExternal: boolean): void;
   hideError(): void;
   setMeta(text: string, extra?: string): void;
@@ -158,18 +173,155 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
   sidebarHeader.className = "prg-viewer-sidebar-header";
   const sidebarTitle = ownerDocument.createElement("span");
   sidebarTitle.textContent = "大纲";
-  iconButton(ownerDocument, sidebarHeader, "x", "关闭侧栏", () => actions.toggleOutline());
+  const closeButton = iconButton(ownerDocument, sidebarHeader, "x", "关闭侧栏", () =>
+    actions.toggleOutline(),
+  );
+
+  const modeGroup = ownerDocument.createElement("div");
+  modeGroup.className = "prg-viewer-outline-modes";
+  const modeButtons = new Map<OutlineMode, HTMLButtonElement>();
+  for (const [mode, label] of [
+    ["tree", "树"],
+    ["category", "分类"],
+  ] as const) {
+    const button = ownerDocument.createElement("button");
+    button.type = "button";
+    button.className = "prg-viewer-outline-mode";
+    button.textContent = label;
+    button.title = mode === "tree" ? "节点树视图" : "按类型分组视图";
+    button.setAttribute("aria-label", button.title);
+    button.addEventListener("click", () => actions.setOutlineMode(mode));
+    modeButtons.set(mode, button);
+    modeGroup.append(button);
+  }
+  sidebarHeader.insertBefore(modeGroup, closeButton);
   sidebarHeader.prepend(sidebarTitle);
   const panel = ownerDocument.createElement("div");
   panel.className = "prg-viewer-panel";
+
+  const outlineScroll = ownerDocument.createElement("div");
+  outlineScroll.className = "prg-viewer-outline-scroll";
   const outlinePanel = ownerDocument.createElement("div");
+  outlineScroll.append(outlinePanel);
+
+  const detailsSection = ownerDocument.createElement("section");
+  detailsSection.className = "prg-viewer-details-section";
   const detailsHeading = ownerDocument.createElement("h4");
   detailsHeading.textContent = "详情";
+  const detailsScroll = ownerDocument.createElement("div");
+  detailsScroll.className = "prg-viewer-details-scroll";
   const detailsPanel = ownerDocument.createElement("div");
-  panel.append(outlinePanel, detailsHeading, detailsPanel);
+  detailsScroll.append(detailsPanel);
+  detailsSection.append(detailsHeading, detailsScroll);
+
+  const detailsResizer = ownerDocument.createElement("div");
+  detailsResizer.className = "prg-viewer-details-resizer";
+  detailsResizer.tabIndex = 0;
+  detailsResizer.setAttribute("role", "separator");
+  detailsResizer.setAttribute("aria-orientation", "horizontal");
+  detailsResizer.setAttribute("aria-label", "调整详情高度（双击恢复自动）");
+  detailsResizer.setAttribute("aria-valuemin", String(MIN_DETAILS_RATIO * 100));
+  detailsResizer.setAttribute("aria-valuemax", String(MAX_DETAILS_RATIO * 100));
+
+  const panelHeight = (): number => Math.max(1, panel.getBoundingClientRect().height);
+  const detailsHeight = (): number => detailsSection.getBoundingClientRect().height;
+  const clampDetailsHeight = (height: number): number => {
+    const minimum = 120;
+    const maximum = Math.max(minimum, panelHeight() - 96);
+    return Math.min(maximum, Math.max(minimum, height));
+  };
+  let detailsDragId: number | null = null;
+  let detailsStartY = 0;
+  let detailsStartHeight = 0;
+  let detailsMoved = false;
+
+  detailsResizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    detailsDragId = event.pointerId;
+    detailsStartY = event.clientY;
+    detailsStartHeight = detailsHeight();
+    detailsMoved = false;
+    detailsResizer.setPointerCapture(event.pointerId);
+    detailsResizer.classList.add("is-resizing");
+    event.preventDefault();
+  });
+  detailsResizer.addEventListener("pointermove", (event) => {
+    if (detailsDragId !== event.pointerId) return;
+    const delta = detailsStartY - event.clientY;
+    if (Math.abs(delta) > 2) detailsMoved = true;
+    if (!detailsMoved) return;
+    const height = clampDetailsHeight(detailsStartHeight + delta);
+    actions.setDetailsRatio(height / panelHeight(), false);
+  });
+  const finishDetailsResize = (event: PointerEvent): void => {
+    if (detailsDragId !== event.pointerId) return;
+    detailsDragId = null;
+    detailsResizer.classList.remove("is-resizing");
+    if (detailsResizer.hasPointerCapture(event.pointerId)) {
+      detailsResizer.releasePointerCapture(event.pointerId);
+    }
+    if (detailsMoved) {
+      actions.setDetailsRatio(clampDetailsHeight(detailsHeight()) / panelHeight(), true);
+    }
+    detailsMoved = false;
+  };
+  detailsResizer.addEventListener("pointerup", finishDetailsResize);
+  detailsResizer.addEventListener("pointercancel", finishDetailsResize);
+  detailsResizer.addEventListener("dblclick", () => actions.setDetailsRatio(0, true));
+  detailsResizer.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const delta = event.key === "ArrowUp" ? 32 : -32;
+    actions.setDetailsRatio(clampDetailsHeight(detailsHeight() + delta) / panelHeight(), true);
+  });
+
+  panel.append(outlineScroll, detailsResizer, detailsSection);
   sidebar.append(sidebarHeader, panel);
 
-  body.append(canvasWrap, sidebar);
+  const resizer = ownerDocument.createElement("div");
+  resizer.className = "prg-viewer-resizer";
+  resizer.tabIndex = 0;
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  resizer.setAttribute("aria-label", "调整大纲宽度");
+
+  const clampWidth = (width: number): number =>
+    Math.min(MAX_OUTLINE_WIDTH, Math.max(MIN_OUTLINE_WIDTH, Math.round(width)));
+  const sidebarWidth = (): number => sidebar.getBoundingClientRect().width;
+  let dragPointerId: number | null = null;
+  let dragStartX = 0;
+  let dragStartWidth = 0;
+
+  resizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragStartWidth = sidebarWidth();
+    resizer.setPointerCapture(event.pointerId);
+    resizer.classList.add("is-resizing");
+    event.preventDefault();
+  });
+  resizer.addEventListener("pointermove", (event) => {
+    if (dragPointerId !== event.pointerId) return;
+    actions.setOutlineWidth(clampWidth(dragStartWidth + (dragStartX - event.clientX)), false);
+  });
+  const finishResize = (event: PointerEvent): void => {
+    if (dragPointerId !== event.pointerId) return;
+    dragPointerId = null;
+    resizer.classList.remove("is-resizing");
+    if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+    actions.setOutlineWidth(clampWidth(sidebarWidth()), true);
+  };
+  resizer.addEventListener("pointerup", finishResize);
+  resizer.addEventListener("pointercancel", finishResize);
+  resizer.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const delta = event.key === "ArrowLeft" ? 16 : -16;
+    actions.setOutlineWidth(clampWidth(sidebarWidth() + delta), true);
+  });
+
+  body.append(canvasWrap, resizer, sidebar);
   root.append(toolbar, body);
   container.append(root);
 
@@ -181,8 +333,34 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
     searchInput,
     sidebar,
     outlinePanel,
+    outlineScroll,
     detailsPanel,
+    detailsScroll,
     outlineButton,
+    setOutlineMode: (mode) => {
+      for (const [candidate, button] of modeButtons) {
+        const active = candidate === mode;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+      }
+    },
+    setOutlineWidth: (width) => {
+      const rounded = Math.round(width);
+      sidebar.style.flex = `0 0 ${rounded}px`;
+      resizer.setAttribute("aria-valuemin", String(MIN_OUTLINE_WIDTH));
+      resizer.setAttribute("aria-valuemax", String(MAX_OUTLINE_WIDTH));
+      resizer.setAttribute("aria-valuenow", String(rounded));
+    },
+    setDetailsRatio: (ratio) => {
+      if (ratio <= 0) {
+        detailsSection.style.flex = "";
+        detailsSection.style.maxHeight = "";
+      } else {
+        detailsSection.style.flex = `0 0 ${(ratio * 100).toFixed(2)}%`;
+        detailsSection.style.maxHeight = "none";
+      }
+      detailsResizer.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+    },
     setLoading: (visible) => {
       loading.style.display = visible ? "flex" : "none";
     },
@@ -217,6 +395,7 @@ export function buildChrome(container: HTMLElement, actions: ChromeActions): Chr
     },
     setOutlineVisible: (visible) => {
       sidebar.style.display = visible ? "flex" : "none";
+      resizer.style.display = visible ? "" : "none";
       outlineButton.classList.toggle("is-active", visible);
     },
   };

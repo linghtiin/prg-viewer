@@ -1,4 +1,5 @@
 import { type App, PluginSettingTab, Setting } from "obsidian";
+import { MAX_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH } from "./settings.ts";
 import type PrgViewerPlugin from "./main.ts";
 
 export class PrgSettingsTab extends PluginSettingTab {
@@ -50,6 +51,36 @@ export class PrgSettingsTab extends PluginSettingTab {
           this.plugin.settings.showOutlineByDefault = value;
           await this.plugin.saveSettings();
         }),
+      );
+
+    new Setting(containerEl)
+      .setName("大纲视图")
+      .setDesc("节点树按分组框的嵌套关系展示，可折叠分支；按类型分组则平铺列出全部节点。")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("tree", "节点树（可折叠）")
+          .addOption("category", "按类型分组")
+          .setValue(this.plugin.settings.outlineMode)
+          .onChange(async (value) => {
+            this.plugin.settings.outlineMode = value === "category" ? "category" : "tree";
+            await this.plugin.saveSettings();
+            this.plugin.applyOutlineModeToViews();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("大纲宽度")
+      .setDesc("右侧大纲的像素宽度；也可以直接拖动大纲左侧边缘调整。")
+      .addSlider((slider) =>
+        slider
+          .setLimits(MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH, 10)
+          .setValue(this.plugin.settings.outlineWidth)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.outlineWidth = value;
+            await this.plugin.saveSettings();
+            this.plugin.applyOutlineWidthToViews();
+          }),
       );
 
     new Setting(containerEl)

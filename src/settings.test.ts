@@ -14,12 +14,39 @@ test("merges valid fields and keeps defaults for the rest", () => {
   const settings = normalizeSettings({
     background: "grid",
     showOutlineByDefault: true,
+    outlineMode: "category",
     wheelBehavior: "pan",
   });
   assert.equal(settings.background, "grid");
   assert.equal(settings.showOutlineByDefault, true);
+  assert.equal(settings.outlineMode, "category");
   assert.equal(settings.wheelBehavior, "pan");
   assert.equal(settings.maxImageCacheMB, DEFAULT_SETTINGS.maxImageCacheMB);
+});
+
+test("defaults the outline to a node tree and rejects unknown modes", () => {
+  assert.equal(DEFAULT_SETTINGS.outlineMode, "tree");
+  assert.equal(normalizeSettings({ outlineMode: "graph" }).outlineMode, "tree");
+  assert.equal(normalizeSettings({ outlineMode: 42 }).outlineMode, "tree");
+});
+
+test("clamps the outline width", () => {
+  assert.equal(DEFAULT_SETTINGS.outlineWidth, 260);
+  assert.equal(normalizeSettings({ outlineWidth: 320 }).outlineWidth, 320);
+  assert.equal(normalizeSettings({ outlineWidth: 1 }).outlineWidth, 200);
+  assert.equal(normalizeSettings({ outlineWidth: 100000 }).outlineWidth, 720);
+  assert.equal(normalizeSettings({ outlineWidth: Number.NaN }).outlineWidth, 260);
+});
+
+test("clamps the details ratio and treats zero as auto", () => {
+  assert.equal(DEFAULT_SETTINGS.detailsRatio, 0);
+  assert.equal(normalizeSettings({ detailsRatio: 0 }).detailsRatio, 0);
+  assert.equal(normalizeSettings({ detailsRatio: 0.5 }).detailsRatio, 0.5);
+  assert.equal(normalizeSettings({ detailsRatio: -1 }).detailsRatio, 0);
+  assert.equal(normalizeSettings({ detailsRatio: 0.01 }).detailsRatio, 0.12);
+  assert.equal(normalizeSettings({ detailsRatio: 0.99 }).detailsRatio, 0.85);
+  assert.equal(normalizeSettings({ detailsRatio: Number.NaN }).detailsRatio, 0);
+  assert.equal(normalizeSettings({ detailsRatio: "0.5" }).detailsRatio, 0);
 });
 
 test("defaults to wheel-to-zoom and rejects unknown wheel modes", () => {

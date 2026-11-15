@@ -81,12 +81,20 @@ export function renderDetails(
   }
   container.append(list);
 
-  const title = ownerDocument.createElement("p");
-  title.className = "prg-viewer-details-text";
-  title.textContent = nodeLabel(node);
-  container.append(title);
+  const primary = ownerDocument.createElement("div");
+  primary.className = "prg-viewer-details-primary";
+  const primaryText = ownerDocument.createElement("p");
+  primaryText.className = "prg-viewer-details-text";
+  primaryText.textContent = nodeLabel(node);
+  primary.append(primaryText);
+  container.append(primary);
 
   if (node.kind === "text" && node.details.length > 0) {
+    const heading = ownerDocument.createElement("h4");
+    heading.className = "prg-viewer-details-subheading";
+    heading.textContent = `附加文本（${node.details.length}）`;
+    container.append(heading);
+
     for (const block of node.details) {
       const paragraph = ownerDocument.createElement(block.type.match(/^h[1-6]$/) ? block.type : "p");
       paragraph.className = "prg-viewer-details-text";

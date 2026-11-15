@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Added
 
+- Outline sidebar can switch between a collapsible node tree and the previous kind-grouped list; the tree nests
+  section children, or follows directed edges for mind-map files without sections. New `outlineMode` setting
+  with per-branch and expand/collapse-all controls.
+- Outline sidebar is resizable by dragging its left edge (or via the new width setting); the width is remembered.
+- Arrow keys now move the selection in both the canvas and the outline; `Shift + arrow` keeps the previous
+  pan behaviour, and left/right collapse, expand or walk between parent and child in the tree.
+- Details panel visually separates a node's own text from its attached rich-text blocks.
+- The sidebar now splits into two independent scroll areas: the outline takes the remaining height and the details
+  panel stays pinned at the bottom (up to 45% of the sidebar), so long outlines no longer push details out of view.
+- The divider between outline and details can be dragged to give the details pane more (or less) height, with the
+  ratio remembered; double-clicking the divider restores the automatic height.
 - Wheel behaviour setting: wheel zooms by default (`Ctrl/⌘ + wheel` pans) and the two modes can be swapped.
 - Transparent nodes get a translucent fill when zoomed out, keeping their silhouette readable.
 
@@ -19,6 +30,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Fixed
 
+- The outline tree no longer shows a tooltip for the whole list area, and its collapse arrows keep a screen-reader
+  label without a hover tooltip.
+- Outline rows are no longer drawn with Obsidian's default button chrome (raised background and bullets).
 - Section frames were dropped because their geometry is serialized as `_collisionBoxNormal`; collapsed
   sections now render as a centred title-sized frame.
 - Section frames are now measured from the serialized boundary `Line` shapes; the title-bar rectangle was previously mistaken for the whole frame.

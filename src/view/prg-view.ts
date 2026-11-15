@@ -10,9 +10,16 @@ import { LatexOverlay, type LatexItem } from "../render/latex-overlay.ts";
 import { CanvasRenderer } from "../render/canvas-renderer.ts";
 import { readThemeFromElement, type RenderTheme } from "../render/theme.ts";
 import { Camera } from "../scene/camera.ts";
-import { clamp, rectCenter } from "../scene/geometry.ts";
+import { clamp, rectCenter, rectsIntersect } from "../scene/geometry.ts";
 import { buildScene, type Scene } from "../scene/scene.ts";
 import { fontSizeForLevel } from "../scene/text-layout.ts";
+import {
+  MAX_DETAILS_RATIO,
+  MAX_OUTLINE_WIDTH,
+  MIN_DETAILS_RATIO,
+  MIN_OUTLINE_WIDTH,
+  type OutlineMode,
+} from "../settings.ts";
 import {
   createApproximateTextMeasurer,
   createCanvasTextMeasurer,
@@ -22,10 +29,27 @@ import { copyText } from "../util/clipboard.ts";
 import { bytesToBlob } from "../util/blob.ts";
 import { createLogger, type Logger } from "../util/log.ts";
 import { renderDetails } from "./details-panel.ts";
-import { InteractionController } from "./interactions.ts";
-import { nodeLabel, renderOutline } from "./outline-panel.ts";
+import { InteractionController, type InteractionHost } from "./interactions.ts";
+import {
+  collapsibleOutlineIds,
+  flattenOutline,
+  groupForOutline,
+  nodeLabel,
+  outlineAncestors,
+  renderOutline,
+  resolveOutlineNavigation,
+  type NavigationDirection,
+  type OutlineRow,
+} from "./outline-panel.ts";
 import { buildChrome, type ChromeActions, type ChromeHandles } from "./view-chrome.ts";
 import type PrgViewerPlugin from "../main.ts";
+
+const ARROW_DIRECTIONS: Record<string, NavigationDirection | undefined> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
 
 /** Read-only view that renders a Project Graph canvas inside Obsidian. */
 export class PrgView extends FileView {
@@ -50,6 +74,8 @@ export class PrgView extends FileView {
   private pendingFit = false;
   private pendingLoad = false;
   private outlineVisible = false;
+  private readonly collapsedOutline = new Set<string>();
+  private outlineFileKey: string | null = null;
   private matches: PrgNode[] = [];
   private matchIndex = 0;
   private cameraSaveTimer: number | null = null;
@@ -77,6 +103,10 @@ export class PrgView extends FileView {
     this.chrome = buildChrome(this.contentEl, this.actions());
     this.outlineVisible = this.plugin.settings.showOutlineByDefault;
     this.chrome.setOutlineVisible(this.outlineVisible);
+    this.chrome.setOutlineMode(this.plugin.settings.outlineMode);
+    this.chrome.setOutlineWidth(this.plugin.settings.outlineWidth);
+    this.chrome.setDetailsRatio(this.plugin.settings.detailsRatio);
+    this.registerDomEvent(this.chrome.outlinePanel, "keydown", (event) => this.handleOutlineKeyDown(event));
 
     this.theme = readThemeFromElement(this.contentEl);
     this.measurer = this.createMeasurer();
@@ -138,9 +168,30 @@ export class PrgView extends FileView {
   /** Called by the plugin when settings change. */
   applySettings(): void {
     this.applyTheme();
+    this.applyOutlineMode();
+    this.chrome?.setOutlineWidth(this.plugin.settings.outlineWidth);
+    this.chrome?.setDetailsRatio(this.plugin.settings.detailsRatio);
     this.images?.dispose();
     this.images = new ImageCache(this.plugin.settings.maxImageCacheMB * 1024 * 1024);
     this.requestRender();
+  }
+
+  /** Re-reads the outline mode from settings and repaints the sidebar. */
+  applyOutlineMode(): void {
+    this.chrome?.setOutlineMode(this.plugin.settings.outlineMode);
+    const selectedId = [...this.selection][0];
+    if (selectedId) this.expandOutlineAncestors(selectedId);
+    this.refreshOutline();
+  }
+
+  /** Applies the outline width without rebuilding caches. */
+  applyOutlineWidth(): void {
+    this.chrome?.setOutlineWidth(this.plugin.settings.outlineWidth);
+  }
+
+  /** Applies the persisted details-pane ratio without rebuilding caches. */
+  applyDetailsRatio(): void {
+    this.chrome?.setDetailsRatio(this.plugin.settings.detailsRatio);
   }
 
   private actions(): ChromeActions {
@@ -150,6 +201,9 @@ export class PrgView extends FileView {
       zoomOut: () => this.zoomBy(1 / 1.25),
       resetZoom: () => this.resetZoom(),
       toggleOutline: () => this.toggleOutline(),
+      setOutlineMode: (mode) => this.setOutlineMode(mode),
+      setOutlineWidth: (width, commit) => this.setOutlineWidth(width, commit),
+      setDetailsRatio: (ratio, commit) => this.setDetailsRatio(ratio, commit),
       copyLink: () => {
         void this.copyCurrentLink();
       },
@@ -179,7 +233,7 @@ export class PrgView extends FileView {
     return context ? createCanvasTextMeasurer(context) : createApproximateTextMeasurer();
   }
 
-  private interactionHost() {
+  private interactionHost(): InteractionHost {
     const element = this.chrome?.canvasWrap;
     if (!element) throw new Error("canvas wrapper missing");
     return {
@@ -196,6 +250,7 @@ export class PrgView extends FileView {
         this.requestRender();
       },
       onFocus: (id: string) => this.focusNode(id),
+      onNavigate: (direction) => this.navigateSelection(direction, "canvas"),
       onFit: () => this.fitView(),
       onResetZoom: () => this.resetZoom(),
       onClearSelection: () => this.select(null),
@@ -218,6 +273,8 @@ export class PrgView extends FileView {
       const model = parsePrg(new Uint8Array(buffer));
       this.documentModel = model;
       this.scene = buildScene(model);
+      this.syncOutlineState(model, file.path);
+      this.chrome.outlineScroll.scrollTop = 0;
       this.selection.clear();
       this.hoveredId = null;
       this.matches = [];
@@ -428,7 +485,10 @@ export class PrgView extends FileView {
 
   private select(id: string | null): void {
     this.selection.clear();
-    if (id) this.selection.add(id);
+    if (id) {
+      this.selection.add(id);
+      this.expandOutlineAncestors(id);
+    }
     this.refreshOutline();
     this.refreshDetails();
     this.requestRender();
@@ -439,6 +499,7 @@ export class PrgView extends FileView {
     if (!node) return;
     this.selection.clear();
     this.selection.add(id);
+    this.expandOutlineAncestors(id);
     this.refreshOutline();
     this.refreshDetails();
 
@@ -456,6 +517,153 @@ export class PrgView extends FileView {
     this.requestRender();
   }
 
+  private get outlineMode(): OutlineMode {
+    return this.plugin.settings.outlineMode;
+  }
+
+  private setOutlineMode(mode: OutlineMode): void {
+    if (this.plugin.settings.outlineMode === mode) return;
+    this.plugin.settings.outlineMode = mode;
+    void this.plugin.saveSettings();
+    this.plugin.applyOutlineModeToViews();
+  }
+
+  /** Reopens every collapsed branch on the path to `id` so the selection stays visible. */
+  private expandOutlineAncestors(id: string): void {
+    if (this.outlineMode !== "tree" || !this.documentModel) return;
+    for (const ancestorId of outlineAncestors(this.documentModel, id)) {
+      this.collapsedOutline.delete(ancestorId);
+    }
+  }
+
+  private toggleOutlineCollapse(id: string): void {
+    this.setOutlineCollapsed(id, !this.collapsedOutline.has(id));
+  }
+
+  private setOutlineCollapsed(id: string, collapsed: boolean): void {
+    if (collapsed) {
+      this.collapsedOutline.add(id);
+    } else {
+      this.collapsedOutline.delete(id);
+    }
+    this.refreshOutline();
+  }
+
+  private handleOutlineKeyDown(event: KeyboardEvent): void {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const direction = ARROW_DIRECTIONS[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.navigateSelection(direction, "outline");
+  }
+
+  private navigateSelection(direction: NavigationDirection, context: "canvas" | "outline"): void {
+    const model = this.documentModel;
+    if (!model) return;
+
+    if (context === "outline" && this.outlineMode === "category") {
+      const rows: OutlineRow[] = groupForOutline(model).flatMap((group) =>
+        group.nodes.map((node) => ({ id: node.id, parentId: null, hasChildren: false })),
+      );
+      const move = resolveOutlineNavigation(rows, [...this.selection][0] ?? null, direction);
+      if (move?.kind === "select") this.moveSelection(move.id);
+      return;
+    }
+
+    const rows = flattenOutline(model, context === "outline" ? this.collapsedOutline : undefined);
+    const move = resolveOutlineNavigation(rows, this.navigationAnchor(rows), direction, {
+      allowCollapse: context === "outline",
+      collapsed: this.collapsedOutline,
+    });
+    if (!move) return;
+    if (move.kind === "select") {
+      this.moveSelection(move.id);
+    } else {
+      this.setOutlineCollapsed(move.id, move.kind === "collapse");
+    }
+  }
+
+  /** Deepest row containing the selection, so navigation still works inside a collapsed branch. */
+  private navigationAnchor(rows: readonly OutlineRow[]): string | null {
+    const selectedId = [...this.selection][0] ?? null;
+    if (!selectedId || !this.documentModel) return selectedId;
+    if (rows.some((row) => row.id === selectedId)) return selectedId;
+    const ancestors = outlineAncestors(this.documentModel, selectedId);
+    for (let index = ancestors.length - 1; index >= 0; index -= 1) {
+      const ancestorId = ancestors[index];
+      if (ancestorId && rows.some((row) => row.id === ancestorId)) return ancestorId;
+    }
+    return null;
+  }
+
+  /** Selects a node and brings it into view without changing the zoom level. */
+  private moveSelection(id: string): void {
+    const node = this.scene?.nodeById.get(id);
+    if (!node) return;
+    this.selection.clear();
+    this.selection.add(id);
+    this.expandOutlineAncestors(id);
+    this.refreshOutline();
+    this.refreshDetails();
+    this.revealNode(node);
+    this.requestRender();
+  }
+
+  private revealNode(node: PrgNode): void {
+    const viewport = this.viewportSize();
+    if (viewport.width <= 0 || viewport.height <= 0) return;
+    if (rectsIntersect(node.rect, this.camera.worldViewport(viewport))) return;
+    this.camera.centerOn(rectCenter(node.rect), viewport);
+    this.scheduleCameraSave();
+  }
+
+  private setOutlineWidth(width: number, commit: boolean): void {
+    const clamped = Math.min(MAX_OUTLINE_WIDTH, Math.max(MIN_OUTLINE_WIDTH, Math.round(width)));
+    this.plugin.settings.outlineWidth = clamped;
+    this.chrome?.setOutlineWidth(clamped);
+    if (commit) void this.plugin.saveSettings();
+  }
+
+  private setDetailsRatio(ratio: number, commit: boolean): void {
+    const normalized =
+      ratio <= 0
+        ? 0
+        : Math.round(Math.min(MAX_DETAILS_RATIO, Math.max(MIN_DETAILS_RATIO, ratio)) * 1000) / 1000;
+    this.plugin.settings.detailsRatio = normalized;
+    this.chrome?.setDetailsRatio(normalized);
+    if (commit) {
+      void this.plugin.saveSettings();
+      this.plugin.applyDetailsRatioToViews();
+    }
+  }
+
+  private expandOutlineAll(): void {
+    this.collapsedOutline.clear();
+    this.refreshOutline();
+  }
+
+  private collapseOutlineAll(): void {
+    if (!this.documentModel) return;
+    this.collapsedOutline.clear();
+    for (const id of collapsibleOutlineIds(this.documentModel)) {
+      this.collapsedOutline.add(id);
+    }
+    this.refreshOutline();
+  }
+
+  /** Drops collapse state when another file is opened; prunes ids that vanished on reload. */
+  private syncOutlineState(model: PrgDocument, path: string): void {
+    if (this.outlineFileKey !== path) {
+      this.collapsedOutline.clear();
+      this.outlineFileKey = path;
+      return;
+    }
+    for (const id of this.collapsedOutline) {
+      if (!model.nodes.has(id)) this.collapsedOutline.delete(id);
+    }
+  }
+
   private updateMeta(): void {
     const model = this.documentModel;
     if (!model || !this.chrome) return;
@@ -466,15 +674,27 @@ export class PrgView extends FileView {
 
   private refreshOutline(): void {
     if (!this.chrome) return;
-    if (!this.documentModel) {
+    const model = this.documentModel;
+    if (!model) {
       this.chrome.outlinePanel.replaceChildren();
       return;
     }
-    renderOutline(this.chrome.outlinePanel, this.documentModel, this.selection, (id) => this.focusNode(id));
+    renderOutline(
+      this.chrome.outlinePanel,
+      model,
+      { mode: this.outlineMode, selected: this.selection, collapsed: this.collapsedOutline },
+      {
+        select: (id) => this.focusNode(id),
+        toggleCollapse: (id) => this.toggleOutlineCollapse(id),
+        expandAll: () => this.expandOutlineAll(),
+        collapseAll: () => this.collapseOutlineAll(),
+      },
+    );
   }
 
   private refreshDetails(): void {
     if (!this.chrome) return;
+    this.chrome.detailsScroll.scrollTop = 0;
     const nodes: PrgNode[] = [];
     for (const id of this.selection) {
       const node = this.documentModel?.nodes.get(id);
