@@ -572,7 +572,13 @@ export class PrgView extends FileView {
 
     if (context === "outline" && this.outlineMode === "category") {
       const rows: OutlineRow[] = groupForOutline(model).flatMap((group) =>
-        group.nodes.map((node) => ({ id: node.id, parentId: null, hasChildren: false })),
+        group.nodes.map((node) => ({
+          key: node.id,
+          id: node.id,
+          parentId: null,
+          parentKey: null,
+          hasChildren: false,
+        })),
       );
       const move = resolveOutlineNavigation(rows, [...this.selection][0] ?? null, direction);
       if (move?.kind === "select") this.moveSelection(move.id);
@@ -580,7 +586,11 @@ export class PrgView extends FileView {
     }
 
     const rows = flattenOutline(model, context === "outline" ? this.collapsedOutline : undefined);
-    const move = resolveOutlineNavigation(rows, this.navigationAnchor(rows), direction, {
+    const current =
+      context === "outline"
+        ? (this.focusedOutlineKey() ?? this.navigationAnchor(rows))
+        : this.navigationAnchor(rows);
+    const move = resolveOutlineNavigation(rows, current, direction, {
       allowCollapse: context === "outline",
       collapsed: this.collapsedOutline,
     });
@@ -590,6 +600,14 @@ export class PrgView extends FileView {
     } else {
       this.setOutlineCollapsed(move.id, move.kind === "collapse");
     }
+  }
+
+  /** Row key of the focused outline entry; rows are per group, so ids are ambiguous. */
+  private focusedOutlineKey(): string | null {
+    const active = this.chrome?.outlinePanel.ownerDocument.activeElement;
+    if (!(active instanceof HTMLElement)) return null;
+    const row = active.closest("[data-outline-key]");
+    return row instanceof HTMLElement ? (row.dataset.outlineKey ?? null) : null;
   }
 
   /** Deepest row containing the selection, so navigation still works inside a collapsed branch. */

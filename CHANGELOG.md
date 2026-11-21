@@ -8,14 +8,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Changed
 
-- Outline tree mode now uses the same grouped presentation as category mode: the forest is split into groups keyed
-  by the kind of each tree's root, so a tree rooted at a text node stays under 文本 even when it contains group
-  frames, and a tree rooted at a frame stays under 分组. Category mode is unchanged.
-- In tree mode a group frame is marked by its collapse chevron (accent colour inside a small box) instead of a
-  prefix glyph; plain nodes keep the faint, boxless chevron.
-- Outline tree now keeps a wrapped node where it belongs in the graph. A group frame whose contents are connected
-  to the rest of the canvas follows that connection instead of becoming a root, and an edge may parent a frame
-  directly.
+- Outline tree mode now renders two kinds of trees under the same grouped headings as category mode. `分组` holds the
+  containment trees: every frame that is not inside another frame is a root, and the entities drawn inside a frame
+  are its children. `文本` / `公式` / `图片` / `其他` hold the connection trees: hierarchy comes only from edges,
+  grouped by each root's kind. A frame reached by an edge appears in a connection tree without expanding its
+  contained entities, so a frame can show up in both groups with different children, and a node wrapped by a frame
+  keeps its edge parent.
+- In tree mode a group frame is marked by its collapse corner (accent colour inside a small box; a childless frame
+  keeps an empty box) instead of a prefix glyph; plain nodes keep the faint, boxless chevron.
+- Outline rows are keyed per group, so a node that appears in both trees stays distinguishable for focus and
+  arrow-key navigation, and navigation follows the grouped row order.
 
 ### Fixed
 

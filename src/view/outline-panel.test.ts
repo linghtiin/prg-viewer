@@ -12,11 +12,12 @@ import {
 import { parsePrg } from "../format/build-document.ts";
 import type { PrgDocument } from "../format/types.ts";
 import {
-  buildOutlineTree,
+  buildContainmentTree,
+  buildEdgeTree,
+  buildOutlineGroups,
   collapsibleOutlineIds,
   flattenOutline,
   groupForOutline,
-  groupOutlineRoots,
   outlineAncestors,
   resolveOutlineNavigation,
   type OutlineTreeNode,
@@ -50,15 +51,26 @@ function nestedDocument(): PrgDocument {
   );
 }
 
-test("buildOutlineTree nests children and keeps document order at the roots", () => {
-  const tree = buildOutlineTree(nestedDocument());
-  assert.deepEqual(ids(tree), ["a", "s", "d"]);
-  const section = tree[1];
+test("containment tree nests frames and the entities inside them", () => {
+  const roots = buildContainmentTree(nestedDocument());
+  assert.deepEqual(ids(roots), ["s"]);
+  const section = roots[0];
   assert.ok(section);
   assert.deepEqual(ids(section.children), ["b", "inner"]);
   const inner = section.children[1];
   assert.ok(inner);
   assert.deepEqual(ids(inner.children), ["c"]);
+});
+
+test("every frame outside another frame is a containment root", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [sectionNode("s1", [textNode("b")]), sectionNode("s2", [textNode("c")])],
+    }),
+  );
+  const roots = buildContainmentTree(document);
+  assert.deepEqual(ids(roots), ["s1", "s2"]);
+  assert.deepEqual(flatten(roots), ["s1", "b", "s2", "c"]);
 });
 
 test("a node listed both inside a section and at the top level appears once", () => {
@@ -67,9 +79,9 @@ test("a node listed both inside a section and at the top level appears once", ()
       stage: [sectionNode("s", [textNode("b")]), textNode("b")],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["s"]);
-  assert.deepEqual(flatten(tree), ["s", "b"]);
+  const roots = buildContainmentTree(document);
+  assert.deepEqual(ids(roots), ["s"]);
+  assert.deepEqual(flatten(roots), ["s", "b"]);
 });
 
 test("a child listed before its section still belongs to that section", () => {
@@ -79,9 +91,9 @@ test("a child listed before its section still belongs to that section", () => {
     }),
   );
   assert.equal(document.order[0], "b");
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["s"]);
-  assert.deepEqual(flatten(tree), ["s", "b"]);
+  const roots = buildContainmentTree(document);
+  assert.deepEqual(ids(roots), ["s"]);
+  assert.deepEqual(flatten(roots), ["s", "b"]);
 });
 
 test("two sections claiming the same child keep the first declaration", () => {
@@ -90,22 +102,22 @@ test("two sections claiming the same child keep the first declaration", () => {
       stage: [sectionNode("s1", [textNode("x")]), sectionNode("s2", [textNode("x")])],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["s1", "s2"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["x"]);
-  assert.deepEqual(ids(tree[1]?.children ?? []), []);
-  assert.deepEqual(flatten(tree), ["s1", "x", "s2"]);
+  const roots = buildContainmentTree(document);
+  assert.deepEqual(ids(roots), ["s1", "s2"]);
+  assert.deepEqual(ids(roots[0]?.children ?? []), ["x"]);
+  assert.deepEqual(ids(roots[1]?.children ?? []), []);
+  assert.deepEqual(flatten(roots), ["s1", "x", "s2"]);
 });
 
-test("cyclic section references are broken and every node appears once", () => {
+test("cyclic containment references are broken and every node appears once", () => {
   const document = parsePrg(
     buildPrg({
       stage: [sectionNode("a", [sectionNode("b", [sectionNode("a", [])])])],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(flatten(tree), ["a", "b"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["b"]);
+  const roots = buildContainmentTree(document);
+  assert.deepEqual(flatten(roots), ["a", "b"]);
+  assert.deepEqual(ids(roots[0]?.children ?? []), ["b"]);
 });
 
 test("missing and self child references are ignored", () => {
@@ -115,13 +127,13 @@ test("missing and self child references are ignored", () => {
   section.children.push("missing", "s");
   document.order.push("missing");
 
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["s"]);
-  assert.deepEqual(flatten(tree), ["s"]);
+  const roots = buildContainmentTree(document);
+  assert.deepEqual(ids(roots), ["s"]);
+  assert.deepEqual(flatten(roots), ["s"]);
   assert.deepEqual(collapsibleOutlineIds(document), []);
 });
 
-test("directed edges form the tree when the file has no sections", () => {
+test("connection forest nests by directed edges", () => {
   const document = parsePrg(
     buildPrg({
       stage: [
@@ -135,13 +147,13 @@ test("directed edges form the tree when the file has no sections", () => {
       ],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["root"]);
-  const root = tree[0];
+  const roots = buildEdgeTree(document);
+  assert.deepEqual(ids(roots), ["root"]);
+  const root = roots[0];
   assert.ok(root);
   assert.deepEqual(ids(root.children), ["a", "b"]);
   assert.deepEqual(ids(root.children[0]?.children ?? []), ["leaf"]);
-  assert.deepEqual(flatten(tree), ["root", "a", "leaf", "b"]);
+  assert.deepEqual(flatten(roots), ["root", "a", "leaf", "b"]);
   assert.deepEqual(collapsibleOutlineIds(document), ["root", "a"]);
 });
 
@@ -157,8 +169,8 @@ test("connection-derived children follow the canvas reading order", () => {
       ],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["upper", "lower"]);
+  const roots = buildEdgeTree(document);
+  assert.deepEqual(ids(roots[0]?.children ?? []), ["upper", "lower"]);
 });
 
 test("multiple incoming edges keep the first edge as the parent", () => {
@@ -173,11 +185,11 @@ test("multiple incoming edges keep the first edge as the parent", () => {
       ],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["root1", "root2"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["child"]);
-  assert.deepEqual(ids(tree[1]?.children ?? []), []);
-  assert.deepEqual(flatten(tree), ["root1", "child", "root2"]);
+  const roots = buildEdgeTree(document);
+  assert.deepEqual(ids(roots), ["root1", "root2"]);
+  assert.deepEqual(ids(roots[0]?.children ?? []), ["child"]);
+  assert.deepEqual(ids(roots[1]?.children ?? []), []);
+  assert.deepEqual(flatten(roots), ["root1", "child", "root2"]);
 });
 
 test("edge cycles are broken and every node appears once", () => {
@@ -193,104 +205,113 @@ test("edge cycles are broken and every node appears once", () => {
       ],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a"]);
-  assert.deepEqual(flatten(tree), ["a", "b", "c"]);
+  const roots = buildEdgeTree(document);
+  assert.deepEqual(ids(roots), ["a"]);
+  assert.deepEqual(flatten(roots), ["a", "b", "c"]);
 });
 
-test("a wrapped node keeps its tree parent through the frame", () => {
+test("a frame around a connected node never enters the connection chain", () => {
   const document = parsePrg(
     buildPrg({
       stage: [
         textNode("a"),
-        sectionNode("s", [textNode("b")]),
+        sectionNode("frame", [textNode("b")]),
         textNode("c"),
         lineEdge("e1", "/0", "/1/children/0"),
         lineEdge("e2", "/1/children/0", "/2"),
       ],
     }),
   );
-  const tree = buildOutlineTree(document);
-  // The frame follows the node it wraps; the node and its subtree stay below it.
-  assert.deepEqual(ids(tree), ["a"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["s"]);
-  assert.deepEqual(ids(tree[0]?.children[0]?.children ?? []), ["b"]);
-  assert.deepEqual(ids(tree[0]?.children[0]?.children[0]?.children ?? []), ["c"]);
-  assert.deepEqual(flatten(tree), ["a", "s", "b", "c"]);
+  const roots = buildEdgeTree(document);
+  // The edge goes from node `a` to node `b`; the frame is not part of that chain.
+  assert.deepEqual(ids(roots), ["a"]);
+  assert.deepEqual(ids(roots[0]?.children ?? []), ["b"]);
+  assert.deepEqual(ids(roots[0]?.children[0]?.children ?? []), ["c"]);
+  // The frame still groups `b` in the containment tree.
+  assert.deepEqual(ids(buildContainmentTree(document)), ["frame"]);
 });
 
-test("a frame adopts the edge parent of a frame nested inside it", () => {
+test("an edge into a frame keeps that frame a leaf of the connection forest", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [textNode("a"), sectionNode("frame", [textNode("b")]), lineEdge("e", "/0", "/1")],
+    }),
+  );
+  const roots = buildEdgeTree(document);
+  assert.deepEqual(ids(roots), ["a"]);
+  assert.deepEqual(ids(roots[0]?.children ?? []), ["frame"]);
+  assert.deepEqual(ids(roots[0]?.children[0]?.children ?? []), []);
+  const containment = buildContainmentTree(document);
+  assert.deepEqual(ids(containment), ["frame"]);
+  assert.deepEqual(ids(containment[0]?.children ?? []), ["b"]);
+});
+
+test("a frame no edge points at stays out of the connection forest", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [textNode("a"), sectionNode("frame", [textNode("b")])],
+    }),
+  );
+  const roots = buildEdgeTree(document);
+  // `a` is not connected either; it is a standalone tree of its own.
+  assert.deepEqual(ids(roots), ["a"]);
+  assert.deepEqual(ids(roots[0]?.children ?? []), []);
+});
+
+test("tree groups use containment under 分组 and connections by root kind", () => {
   const document = parsePrg(
     buildPrg({
       stage: [
-        textNode("a"),
-        sectionNode("outer", [sectionNode("inner", [textNode("c")])]),
-        lineEdge("e", "/0", "/1/children/0/children/0"),
+        textNode("t"),
+        sectionNode("frame", [textNode("b")]),
+        latexNode("l", "x^2"),
+        lineEdge("e", "/2", "/0"),
       ],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["outer"]);
-  assert.deepEqual(ids(tree[0]?.children[0]?.children ?? []), ["inner"]);
-  assert.deepEqual(ids(tree[0]?.children[0]?.children[0]?.children ?? []), ["c"]);
+  const groups = buildOutlineGroups(document);
+  assert.deepEqual(
+    groups.map((group) => group.title),
+    ["分组", "公式"],
+  );
+  assert.deepEqual(
+    groups.map((group) => ids(group.entries)),
+    [["frame"], ["l"]],
+  );
+  assert.deepEqual(ids(groups[0]?.entries[0]?.children ?? []), ["b"]);
+  assert.deepEqual(ids(groups[1]?.entries[0]?.children ?? []), ["t"]);
 });
 
-test("an edge parents a frame that is not inside another frame", () => {
+test("a frame can appear in both groups with different children and navigation keys", () => {
   const document = parsePrg(
     buildPrg({
-      stage: [textNode("a"), sectionNode("s", []), lineEdge("e", "/0", "/1")],
+      stage: [textNode("a"), sectionNode("frame", [textNode("b")]), lineEdge("e", "/0", "/1")],
     }),
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["s"]);
-  assert.deepEqual(flatten(tree), ["a", "s"]);
-});
-
-test("an edge into a contained frame does not pull it out of its parent", () => {
-  const document = parsePrg(
-    buildPrg({
-      stage: [
-        textNode("a"),
-        sectionNode("outer", [sectionNode("inner", [])]),
-        lineEdge("e", "/0", "/1/children/0"),
-      ],
-    }),
+  const rows = flattenOutline(document);
+  assert.deepEqual(
+    rows.map((row) => row.key),
+    ["分组:frame", "分组:b", "文本:a", "文本:frame"],
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["outer"]);
-  assert.deepEqual(ids(tree[0]?.children[0]?.children ?? []), ["inner"]);
-});
-
-test("an edge from inside a frame never parents the frame itself", () => {
-  const document = parsePrg(
-    buildPrg({
-      stage: [sectionNode("s", [textNode("b")]), lineEdge("e", "/0/children/0", "/0")],
-    }),
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    ["frame", "b", "a", "frame"],
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["s"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["b"]);
-  assert.deepEqual(flatten(tree), ["s", "b"]);
-});
-
-test("adopted frames keep the canvas reading order among their siblings", () => {
-  const document = parsePrg(
-    buildPrg({
-      stage: [
-        textNode("a"),
-        textNode("z", { collisionBox: collisionBox(0, 200, 100, 50) }),
-        sectionNode("s", [textNode("b")]),
-        lineEdge("e1", "/0", "/1"),
-        lineEdge("e2", "/0", "/2/children/0"),
-      ],
-    }),
+  assert.deepEqual(
+    rows.map((row) => row.parentKey),
+    [null, "分组:frame", null, "文本:a"],
   );
-  const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["s", "z"]);
+  // The two appearances navigate independently: right from the 分组 root opens
+  // its contained node, while the 文本 frame is a leaf.
+  assert.deepEqual(resolveOutlineNavigation(rows, "分组:frame", "right"), {
+    kind: "select",
+    id: "b",
+  });
+  assert.equal(resolveOutlineNavigation(rows, "文本:frame", "right"), null);
+  assert.deepEqual(resolveOutlineNavigation(rows, "分组:b", "left"), {
+    kind: "select",
+    id: "frame",
+  });
 });
 
 test("outlineAncestors returns the chain from the root to the parent", () => {
@@ -301,6 +322,16 @@ test("outlineAncestors returns the chain from the root to the parent", () => {
   assert.deepEqual(outlineAncestors(document, "missing"), []);
 });
 
+test("outlineAncestors merges the chains of a node that appears in two groups", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [textNode("a"), sectionNode("frame", [textNode("b")]), lineEdge("e", "/0", "/1")],
+    }),
+  );
+  assert.deepEqual(outlineAncestors(document, "frame"), ["a"]);
+  assert.deepEqual(outlineAncestors(document, "b"), ["frame"]);
+});
+
 test("collapsibleOutlineIds only contains nodes with children", () => {
   const document = nestedDocument();
   assert.deepEqual(collapsibleOutlineIds(document), ["s", "inner"]);
@@ -309,7 +340,7 @@ test("collapsibleOutlineIds only contains nodes with children", () => {
 test("flattenOutline follows display order and skips collapsed children", () => {
   const document = nestedDocument();
   const all = flattenOutline(document);
-  // Roots are grouped by kind: the section tree comes before the text roots.
+  // 分组 comes first (containment), then the connection trees by root kind.
   assert.deepEqual(
     all.map((row) => row.id),
     ["s", "b", "inner", "c", "a", "d"],
@@ -365,39 +396,14 @@ test("resolveOutlineNavigation collapses and expands tree branches", () => {
   assert.equal(resolveOutlineNavigation(rows, "s", "left", { allowCollapse: true, collapsed }), null);
 
   const flat = flattenOutline(nestedDocument()).map((row) => ({
+    key: row.key,
     id: row.id,
     parentId: null,
+    parentKey: null,
     hasChildren: false,
   }));
   assert.equal(resolveOutlineNavigation(flat, "a", "left"), null);
   assert.equal(resolveOutlineNavigation(flat, "a", "right"), null);
-});
-
-test("tree roots are grouped by their own kind, like category mode", () => {
-  const document = parsePrg(
-    buildPrg({
-      stage: [
-        textNode("t"),
-        sectionNode("withFrameChild", [textNode("inner")]),
-        sectionNode("withNodeChild", [textNode("n")]),
-        sectionNode("empty", []),
-        lineEdge("e", "/0", "/1"),
-      ],
-    }),
-  );
-  const tree = buildOutlineTree(document);
-  // The text root pulls the frame inside it and keeps its own group.
-  assert.deepEqual(ids(tree), ["t", "withNodeChild", "empty"]);
-  const groups = groupOutlineRoots(tree);
-  assert.deepEqual(
-    groups.map((group) => group.title),
-    ["分组", "文本"],
-  );
-  assert.deepEqual(
-    groups.map((group) => ids(group.entries)),
-    [["withNodeChild", "empty"], ["t"]],
-  );
-  assert.deepEqual(ids(tree[0]?.children ?? []), ["withFrameChild"]);
 });
 
 test("groupForOutline keeps the kind order and document order inside a group", () => {
@@ -425,7 +431,9 @@ test("groupForOutline keeps the kind order and document order inside a group", (
 
 test("an empty document yields an empty outline", () => {
   const document = parsePrg(buildPrg({ stage: [] }));
-  assert.deepEqual(buildOutlineTree(document), []);
+  assert.deepEqual(buildContainmentTree(document), []);
+  assert.deepEqual(buildEdgeTree(document), []);
+  assert.deepEqual(buildOutlineGroups(document), []);
   assert.deepEqual(groupForOutline(document), []);
   assert.deepEqual(collapsibleOutlineIds(document), []);
 });

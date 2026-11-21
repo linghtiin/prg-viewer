@@ -453,6 +453,14 @@
   background-color: var(--background-modifier-hover);
 }
 
+/* A childless frame has no chevron; an empty accent box keeps it recognisable. */
+.prg-viewer-outline-row .prg-viewer-outline-spacer.is-frame {
+  height: 16px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 3px;
+  background-color: transparent;
+}
+
 .prg-viewer-outline-row .prg-viewer-outline-toggle:hover {
   color: var(--text-normal);
 }
