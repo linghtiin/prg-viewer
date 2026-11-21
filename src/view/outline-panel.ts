@@ -99,26 +99,22 @@ function createAttachment(byId: ReadonlyMap<string, OutlineTreeNode>): Attachmen
 }
 
 /**
- * Builds the connection forest that tree mode shows in the node groups.
+ * Builds the connection forest that tree mode shows under 连接.
  *
  * Hierarchy comes only from `LineEdge` connections: containment is ignored, so a
  * frame drawn around a connected node never slips between that node and its edge
- * parent, while a frame that an edge points at becomes a child of that edge. For
- * the same reason a frame reached this way stays a leaf unless edges leave it —
- * its contained entities belong to the containment tree.
+ * parent, while a frame that an edge points at becomes a child of that edge. A
+ * frame with only outgoing connections is a root of its own tree, so connections
+ * made from a frame stay visible even when the frame is not itself connected.
+ * Containment never expands here; a frame's contained entities belong to the
+ * tree built by {@link buildContainmentTree}.
  *
  * Nodes outside every frame join as standalone roots even without connections,
- * so nothing uncontained disappears from tree mode. Frames that no connection
- * points at are not part of this forest at all; they are represented by
- * {@link buildContainmentTree}. A frame with no incoming edge therefore does not
- * drag its outgoing edges into a rooted-by-frame tree either: such edges are
- * skipped so their targets stay visible as roots.
+ * so nothing uncontained disappears from tree mode.
  */
 export function buildEdgeTree(document: PrgDocument): OutlineTreeNode[] {
   const { entries, byId } = indexEntries(document);
   const { parentOf, attach } = createAttachment(byId);
-  const incoming = new Set<string>();
-  for (const edge of document.edges) incoming.add(edge.to);
   const contained = new Set<string>();
   for (const entry of entries) {
     if (entry.node.kind !== "section") continue;
@@ -131,7 +127,6 @@ export function buildEdgeTree(document: PrgDocument): OutlineTreeNode[] {
     const parent = byId.get(edge.from);
     const child = byId.get(edge.to);
     if (!parent || !child) continue;
-    if (parent.node.kind === "section" && !incoming.has(parent.node.id)) continue;
     participants.add(parent.node.id);
     participants.add(child.node.id);
     attach(parent, child.node.id);
@@ -165,25 +160,21 @@ export function buildContainmentTree(document: PrgDocument): OutlineTreeNode[] {
 }
 
 /**
- * Builds the headed groups tree mode renders, in category-mode order.
+ * Builds the headed groups tree mode renders.
  *
- * The 分组 group is the containment forest. The remaining groups hold the
- * connection forest, split by each tree root's node kind, so a connection tree
- * rooted at a node stays a node group even when it contains frames. A frame can
- * show up twice — as a root of 分组 and as an entry of a connection tree — but
- * each appearance expands only the children of its own tree.
+ * The 包含 group is the containment forest and the 连接 group is the connection
+ * forest; the two are classified by where their hierarchy comes from, not by the
+ * kind of their roots. A frame can therefore show up twice — as a containment
+ * root and inside a connection tree — and each appearance expands only the
+ * children of its own tree.
  */
 export function buildOutlineGroups(document: PrgDocument): OutlineRootGroup[] {
   const groups: OutlineRootGroup[] = [];
   const containment = buildContainmentTree(document);
-  if (containment.length > 0) groups.push({ title: GROUP_TITLES.section, entries: containment });
+  if (containment.length > 0) groups.push({ title: "包含", entries: containment });
 
-  const edgeRoots = buildEdgeTree(document).filter((entry) => entry.node.kind !== "section");
-  for (const kind of GROUP_ORDER) {
-    if (kind === "section") continue;
-    const entries = edgeRoots.filter((entry) => entry.node.kind === kind);
-    if (entries.length > 0) groups.push({ title: GROUP_TITLES[kind], entries });
-  }
+  const connection = buildEdgeTree(document);
+  if (connection.length > 0) groups.push({ title: "连接", entries: connection });
   return groups;
 }
 

@@ -8,12 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Changed
 
-- Outline tree mode now renders two kinds of trees under the same grouped headings as category mode. `分组` holds the
-  containment trees: every frame that is not inside another frame is a root, and the entities drawn inside a frame
-  are its children. `文本` / `公式` / `图片` / `其他` hold the connection trees: hierarchy comes only from edges,
-  grouped by each root's kind. A frame reached by an edge appears in a connection tree without expanding its
-  contained entities, so a frame can show up in both groups with different children, and a node wrapped by a frame
-  keeps its edge parent.
+- Outline tree mode now renders two groups classified by where their hierarchy comes from, not by root kind. `包含`
+  holds the containment trees: every frame that is not inside another frame is a root, and the entities drawn inside
+  a frame are its children. `连接` holds the connection trees: hierarchy comes only from edges, every node or frame
+  without an incoming edge is a root, and a frame with only outgoing connections becomes a root of its own tree.
+  A frame can therefore show up in both groups with different children, and a node wrapped by a frame keeps its edge
+  parent.
 - In tree mode a group frame is marked by its collapse corner (accent colour inside a small box; a childless frame
   keeps an empty box) instead of a prefix glyph; plain nodes keep the faint, boxless chevron.
 - Outline rows are keyed per group, so a node that appears in both trees stays distinguishable for focus and

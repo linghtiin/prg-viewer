@@ -258,7 +258,7 @@ test("a frame no edge points at stays out of the connection forest", () => {
   assert.deepEqual(ids(roots[0]?.children ?? []), []);
 });
 
-test("tree groups use containment under 分组 and connections by root kind", () => {
+test("tree groups separate 包含 from 连接 regardless of root kind", () => {
   const document = parsePrg(
     buildPrg({
       stage: [
@@ -272,7 +272,7 @@ test("tree groups use containment under 分组 and connections by root kind", ()
   const groups = buildOutlineGroups(document);
   assert.deepEqual(
     groups.map((group) => group.title),
-    ["分组", "公式"],
+    ["包含", "连接"],
   );
   assert.deepEqual(
     groups.map((group) => ids(group.entries)),
@@ -280,6 +280,29 @@ test("tree groups use containment under 分组 and connections by root kind", ()
   );
   assert.deepEqual(ids(groups[0]?.entries[0]?.children ?? []), ["b"]);
   assert.deepEqual(ids(groups[1]?.entries[0]?.children ?? []), ["t"]);
+});
+
+test("a frame with only outgoing connections becomes a 连接 root", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [sectionNode("frame", [textNode("b")]), lineEdge("e", "/0", "/0/children/0")],
+    }),
+  );
+  const connection = buildEdgeTree(document);
+  assert.deepEqual(ids(connection), ["frame"]);
+  assert.deepEqual(ids(connection[0]?.children ?? []), ["b"]);
+  const containment = buildContainmentTree(document);
+  assert.deepEqual(ids(containment), ["frame"]);
+  assert.deepEqual(ids(containment[0]?.children ?? []), ["b"]);
+  const groups = buildOutlineGroups(document);
+  assert.deepEqual(
+    groups.map((group) => group.title),
+    ["包含", "连接"],
+  );
+  assert.deepEqual(
+    groups.map((group) => ids(group.entries)),
+    [["frame"], ["frame"]],
+  );
 });
 
 test("a frame can appear in both groups with different children and navigation keys", () => {
@@ -291,7 +314,7 @@ test("a frame can appear in both groups with different children and navigation k
   const rows = flattenOutline(document);
   assert.deepEqual(
     rows.map((row) => row.key),
-    ["分组:frame", "分组:b", "文本:a", "文本:frame"],
+    ["包含:frame", "包含:b", "连接:a", "连接:frame"],
   );
   assert.deepEqual(
     rows.map((row) => row.id),
@@ -299,16 +322,16 @@ test("a frame can appear in both groups with different children and navigation k
   );
   assert.deepEqual(
     rows.map((row) => row.parentKey),
-    [null, "分组:frame", null, "文本:a"],
+    [null, "包含:frame", null, "连接:a"],
   );
-  // The two appearances navigate independently: right from the 分组 root opens
-  // its contained node, while the 文本 frame is a leaf.
-  assert.deepEqual(resolveOutlineNavigation(rows, "分组:frame", "right"), {
+  // The two appearances navigate independently: right from the 包含 root opens
+  // its contained node, while the 连接 frame is a leaf.
+  assert.deepEqual(resolveOutlineNavigation(rows, "包含:frame", "right"), {
     kind: "select",
     id: "b",
   });
-  assert.equal(resolveOutlineNavigation(rows, "文本:frame", "right"), null);
-  assert.deepEqual(resolveOutlineNavigation(rows, "分组:b", "left"), {
+  assert.equal(resolveOutlineNavigation(rows, "连接:frame", "right"), null);
+  assert.deepEqual(resolveOutlineNavigation(rows, "包含:b", "left"), {
     kind: "select",
     id: "frame",
   });
@@ -340,7 +363,7 @@ test("collapsibleOutlineIds only contains nodes with children", () => {
 test("flattenOutline follows display order and skips collapsed children", () => {
   const document = nestedDocument();
   const all = flattenOutline(document);
-  // 分组 comes first (containment), then the connection trees by root kind.
+  // 包含 comes first (containment), then the 连接 trees.
   assert.deepEqual(
     all.map((row) => row.id),
     ["s", "b", "inner", "c", "a", "d"],
