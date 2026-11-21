@@ -87,8 +87,9 @@ export function parsePrg(input: Uint8Array | ArrayBuffer, options: ParseOptions 
       rawEdges.push(item);
       continue;
     }
-    visitEntity(item, 0, { nodes, order, warnings });
+    visitEntity(item, { nodes, order, warnings });
   }
+  assignSectionDepths(nodes);
 
   const edges = buildEdges(rawEdges, nodes, warnings);
 
@@ -130,7 +131,7 @@ interface BuildState {
   warnings: PrgWarning[];
 }
 
-function visitEntity(value: unknown, ancestorDepth: number, state: BuildState): string | null {
+function visitEntity(value: unknown, state: BuildState): string | null {
   if (!isRecord(value)) {
     pushWarning(state.warnings, createWarning("invalid-entry", "舞台对象不是对象，已跳过。"));
     return null;
@@ -221,12 +222,13 @@ function visitEntity(value: unknown, ancestorDepth: number, state: BuildState): 
         collapsed,
         borderStyle: readBorderStyle(value.borderStyle),
         children: [],
-        depth: ancestorDepth + 1,
+        // Recomputed from containment once the whole stage has been read.
+        depth: 1,
       };
       register(state, section);
       const children = Array.isArray(value.children) ? value.children : [];
       for (const child of children) {
-        const childId = visitEntity(child, ancestorDepth + 1, state);
+        const childId = visitEntity(child, state);
         if (childId && childId !== id && !section.children.includes(childId)) {
           section.children.push(childId);
         }
@@ -253,6 +255,41 @@ function visitEntity(value: unknown, ancestorDepth: number, state: BuildState): 
 function register(state: BuildState, node: PrgNode): void {
   state.nodes.set(node.id, node);
   state.order.push(node.id);
+}
+
+/**
+ * Derives each section's nesting depth from containment instead of stage order.
+ *
+ * Project Graph writes a section both at the top level of the stage and inside
+ * its parent's `children`, so a nested section can be read before the section
+ * that contains it. Painting order uses `depth` (outermost frame first); trusting
+ * the read order would paint an opaque outer frame over its nested frames and
+ * hide them. The first section that claims a child owns it, and a cycle falls
+ * back to a stable depth instead of looping.
+ */
+function assignSectionDepths(nodes: Map<string, PrgNode>): void {
+  const parentOf = new Map<string, string>();
+  for (const node of nodes.values()) {
+    if (node.kind !== "section") continue;
+    for (const childId of node.children) {
+      if (childId === node.id || parentOf.has(childId)) continue;
+      const child = nodes.get(childId);
+      if (child?.kind === "section") parentOf.set(childId, node.id);
+    }
+  }
+
+  for (const node of nodes.values()) {
+    if (node.kind !== "section") continue;
+    const seen = new Set<string>([node.id]);
+    let depth = 1;
+    let parent = parentOf.get(node.id);
+    while (parent && !seen.has(parent)) {
+      seen.add(parent);
+      depth += 1;
+      parent = parentOf.get(parent);
+    }
+    node.depth = depth;
+  }
 }
 
 function buildEdges(rawEdges: unknown[], nodes: Map<string, PrgNode>, warnings: PrgWarning[]): PrgEdge[] {

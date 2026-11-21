@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Fixed
+
+- Nested group frames are no longer hidden by their parent. A section is serialized both at the top level of the
+  stage and inside its parent's `children`, so the inner frame was read first and painted under the outer frame's
+  opaque fill; nesting depth now comes from containment, which restores the inner frames and their titles.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added
