@@ -16,6 +16,7 @@ import {
   collapsibleOutlineIds,
   flattenOutline,
   groupForOutline,
+  groupOutlineRoots,
   outlineAncestors,
   resolveOutlineNavigation,
   type OutlineTreeNode,
@@ -308,26 +309,27 @@ test("collapsibleOutlineIds only contains nodes with children", () => {
 test("flattenOutline follows display order and skips collapsed children", () => {
   const document = nestedDocument();
   const all = flattenOutline(document);
+  // Roots are grouped by kind: the section tree comes before the text roots.
   assert.deepEqual(
     all.map((row) => row.id),
-    ["a", "s", "b", "inner", "c", "d"],
+    ["s", "b", "inner", "c", "a", "d"],
   );
   assert.deepEqual(
     all.map((row) => row.parentId),
-    [null, null, "s", "s", "inner", null],
+    [null, "s", "s", "inner", null, null],
   );
   assert.deepEqual(
     all.map((row) => row.hasChildren),
-    [false, true, false, true, false, false],
+    [true, false, true, false, false, false],
   );
 
   assert.deepEqual(
     flattenOutline(document, new Set(["s"])).map((row) => row.id),
-    ["a", "s", "d"],
+    ["s", "a", "d"],
   );
   assert.deepEqual(
     flattenOutline(document, new Set(["inner"])).map((row) => row.id),
-    ["a", "s", "b", "inner", "d"],
+    ["s", "b", "inner", "a", "d"],
   );
 });
 
@@ -338,9 +340,9 @@ test("resolveOutlineNavigation moves through rows and branches", () => {
     return move?.kind === "select" ? move.id : null;
   };
 
-  assert.equal(select(null, "down"), "a");
-  assert.equal(select("a", "down"), "s");
-  assert.equal(select("a", "up"), null);
+  assert.equal(select(null, "down"), "s");
+  assert.equal(select("s", "down"), "b");
+  assert.equal(select("s", "up"), null);
   assert.equal(select("d", "down"), null);
   assert.equal(select("s", "right"), "b");
   assert.equal(select("inner", "left"), "s");
@@ -369,6 +371,33 @@ test("resolveOutlineNavigation collapses and expands tree branches", () => {
   }));
   assert.equal(resolveOutlineNavigation(flat, "a", "left"), null);
   assert.equal(resolveOutlineNavigation(flat, "a", "right"), null);
+});
+
+test("tree roots are grouped by their own kind, like category mode", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        textNode("t"),
+        sectionNode("withFrameChild", [textNode("inner")]),
+        sectionNode("withNodeChild", [textNode("n")]),
+        sectionNode("empty", []),
+        lineEdge("e", "/0", "/1"),
+      ],
+    }),
+  );
+  const tree = buildOutlineTree(document);
+  // The text root pulls the frame inside it and keeps its own group.
+  assert.deepEqual(ids(tree), ["t", "withNodeChild", "empty"]);
+  const groups = groupOutlineRoots(tree);
+  assert.deepEqual(
+    groups.map((group) => group.title),
+    ["分组", "文本"],
+  );
+  assert.deepEqual(
+    groups.map((group) => ids(group.entries)),
+    [["withNodeChild", "empty"], ["t"]],
+  );
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["withFrameChild"]);
 });
 
 test("groupForOutline keeps the kind order and document order inside a group", () => {

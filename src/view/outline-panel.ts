@@ -29,6 +29,9 @@ const GROUP_TITLES: Record<PrgNode["kind"], string> = {
   unknown: "其他",
 };
 
+/** Display order shared by category mode and the root groups of tree mode. */
+const GROUP_ORDER: readonly PrgNode["kind"][] = ["section", "text", "latex", "image", "unknown"];
+
 export function groupForOutline(document: PrgDocument): OutlineGroup[] {
   const buckets = new Map<PrgNode["kind"], PrgNode[]>();
   for (const id of document.order) {
@@ -39,7 +42,7 @@ export function groupForOutline(document: PrgDocument): OutlineGroup[] {
     buckets.set(node.kind, bucket);
   }
   const groups: OutlineGroup[] = [];
-  for (const kind of ["section", "text", "latex", "image", "unknown"] as const) {
+  for (const kind of GROUP_ORDER) {
     const nodes = buckets.get(kind);
     if (nodes && nodes.length > 0) groups.push({ title: GROUP_TITLES[kind], nodes });
   }
@@ -50,6 +53,34 @@ export function groupForOutline(document: PrgDocument): OutlineGroup[] {
 export interface OutlineTreeNode {
   node: PrgNode;
   children: OutlineTreeNode[];
+}
+
+/** A group of outline roots that all share the same node kind. */
+export interface OutlineRootGroup {
+  title: string;
+  entries: OutlineTreeNode[];
+}
+
+/**
+ * Groups the roots of the outline forest by their node kind.
+ *
+ * Tree mode reuses category mode's grouped presentation, but groups whole trees:
+ * the kind of a tree's root decides its group, so a text node that contains
+ * frames stays under "文本" and a frame that contains a node stays under "分组".
+ */
+export function groupOutlineRoots(forest: readonly OutlineTreeNode[]): OutlineRootGroup[] {
+  const buckets = new Map<PrgNode["kind"], OutlineTreeNode[]>();
+  for (const entry of forest) {
+    const bucket = buckets.get(entry.node.kind) ?? [];
+    bucket.push(entry);
+    buckets.set(entry.node.kind, bucket);
+  }
+  const groups: OutlineRootGroup[] = [];
+  for (const kind of GROUP_ORDER) {
+    const entries = buckets.get(kind);
+    if (entries && entries.length > 0) groups.push({ title: GROUP_TITLES[kind], entries });
+  }
+  return groups;
 }
 
 /**
@@ -236,7 +267,8 @@ export interface OutlineRow {
 
 /**
  * Flattens the outline in display order. When `collapsed` is given, children of
- * those nodes are skipped, matching what the sidebar actually shows.
+ * those nodes are skipped, matching what the sidebar actually shows. Tree mode
+ * renders one list per root-kind group, so the rows follow the same grouping.
  */
 export function flattenOutline(document: PrgDocument, collapsed?: ReadonlySet<string>): OutlineRow[] {
   const rows: OutlineRow[] = [];
@@ -247,7 +279,7 @@ export function flattenOutline(document: PrgDocument, collapsed?: ReadonlySet<st
       if (entry.children.length > 0 && !collapsed?.has(id)) visit(entry.children, id);
     }
   };
-  visit(buildOutlineTree(document), null);
+  for (const group of groupOutlineRoots(buildOutlineTree(document))) visit(group.entries, null);
   return rows;
 }
 
@@ -327,6 +359,7 @@ function outlineItem(
   node: PrgNode,
   selected: ReadonlySet<string>,
   select: (id: string) => void,
+  tree = false,
 ): HTMLButtonElement {
   const button = ownerDocument.createElement("button");
   button.type = "button";
@@ -335,22 +368,9 @@ function outlineItem(
   button.dataset.outlineRole = "item";
   button.dataset.outlineKind = node.kind;
   const label = nodeLabel(node);
-  const isFrame = node.kind === "section";
-  if (isFrame) {
-    button.classList.add("is-frame");
-    button.setAttribute("aria-label", `分组框：${label}`);
-  }
-
-  const marker = ownerDocument.createElement("span");
-  marker.className = "prg-viewer-outline-kind";
-  marker.textContent = isFrame ? "▣" : "•";
-  marker.setAttribute("aria-hidden", "true");
-  const text = ownerDocument.createElement("span");
-  text.className = "prg-viewer-outline-label";
-  text.textContent = truncate(label);
-  button.append(marker, text);
-
+  button.textContent = truncate(label);
   button.title = label;
+  if (tree && node.kind === "section") button.setAttribute("aria-label", `分组框：${label}`);
   if (selected.has(node.id)) button.classList.add("is-selected");
   button.addEventListener("click", () => select(node.id));
   return button;
@@ -417,10 +437,17 @@ function renderTreeOutline(
   );
   container.append(tools);
 
-  const list = ownerDocument.createElement("ul");
-  list.className = "prg-viewer-outline-tree";
-  appendTreeEntries(ownerDocument, list, tree, state, actions);
-  container.append(list);
+  // Same grouped form as category mode, with whole trees grouped by root kind.
+  for (const group of groupOutlineRoots(tree)) {
+    const heading = ownerDocument.createElement("h4");
+    heading.textContent = `${group.title}（${group.entries.length}）`;
+    container.append(heading);
+
+    const list = ownerDocument.createElement("ul");
+    list.className = "prg-viewer-outline-tree";
+    appendTreeEntries(ownerDocument, list, group.entries, state, actions);
+    container.append(list);
+  }
 }
 
 function appendTreeEntries(
@@ -443,6 +470,7 @@ function appendTreeEntries(
       const toggle = ownerDocument.createElement("button");
       toggle.type = "button";
       toggle.className = "prg-viewer-outline-toggle";
+      if (entry.node.kind === "section") toggle.classList.add("is-frame");
       toggle.dataset.outlineId = entry.node.id;
       toggle.dataset.outlineRole = "toggle";
       const glyph = ownerDocument.createElement("span");
@@ -465,7 +493,7 @@ function appendTreeEntries(
       row.append(spacer);
     }
 
-    row.append(outlineItem(ownerDocument, entry.node, state.selected, (id) => actions.select(id)));
+    row.append(outlineItem(ownerDocument, entry.node, state.selected, (id) => actions.select(id), true));
     item.append(row);
 
     if (hasChildren && expanded) {
