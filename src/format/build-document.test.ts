@@ -118,6 +118,46 @@ test("flattens nested sections and their children", () => {
   assert.deepEqual(inner.children, ["c2"]);
 });
 
+test("derives section depth from containment, not from stage order", () => {
+  // Project Graph lists a section both at the top level and inside its parent,
+  // so the inner frame is read first. Its depth must still come from the parent.
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        sectionNode("inner", [textNode("t")]),
+        sectionNode("outer", [sectionNode("inner", [textNode("t")])]),
+      ],
+    }),
+  );
+
+  const outer = document.nodes.get("outer");
+  assert.ok(outer && outer.kind === "section");
+  assert.equal(outer.depth, 1);
+  assert.deepEqual(outer.children, ["inner"]);
+  const inner = document.nodes.get("inner");
+  assert.ok(inner && inner.kind === "section");
+  assert.equal(inner.depth, 2);
+});
+
+test("keeps a stable depth when sections claim each other", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        sectionNode("a", [sectionNode("b", [sectionNode("a", [])])]),
+        sectionNode("c", [sectionNode("c", [])]),
+      ],
+    }),
+  );
+
+  const depths = ["a", "b", "c"].map((id) => {
+    const section = document.nodes.get(id);
+    assert.ok(section && section.kind === "section");
+    return section.depth;
+  });
+  // The cycle stops at the first repeated ancestor instead of recursing forever.
+  assert.deepEqual(depths, [2, 2, 1]);
+});
+
 test("reads Section geometry from _collisionBoxNormal", () => {
   const document = parsePrg(buildPrg({ stage: [sectionNode("s", [])] }));
   const section = document.nodes.get("s");

@@ -69,7 +69,7 @@ export interface PrgSectionNode extends PrgNodeBase {
   borderStyle: BorderStyle;
   /** Immediate child node ids, in authoring order. */
   children: string[];
-  /** Nesting depth; top-level sections are 1. */
+  /** Nesting depth derived from section containment; top-level sections are 1. */
   depth: number;
 }
 

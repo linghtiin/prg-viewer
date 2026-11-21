@@ -6,6 +6,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Changed
+
+- Outline tree mode now renders two groups classified by where their hierarchy comes from, not by root kind. `包含`
+  holds the containment trees: every frame that is not inside another frame is a root, and the entities drawn inside
+  a frame are its children. `连接` holds the connection trees: hierarchy comes only from edges, every node or frame
+  without an incoming edge is a root, and a frame with only outgoing connections becomes a root of its own tree.
+  A frame can therefore show up in both groups with different children, and a node wrapped by a frame keeps its edge
+  parent.
+- In tree mode a group frame is marked by its collapse corner (accent colour inside a small box; a childless frame
+  keeps an empty box) instead of a prefix glyph; plain nodes keep the faint, boxless chevron.
+- Outline rows are keyed per group, so a node that appears in both trees stays distinguishable for focus and
+  arrow-key navigation, and navigation follows the grouped row order.
+
+### Fixed
+
+- Nested group frames are no longer hidden by their parent. A section is serialized both at the top level of the
+  stage and inside its parent's `children`, so the inner frame was read first and painted under the outer frame's
+  opaque fill; nesting depth now comes from containment, which restores the inner frames and their titles.
+- Tree-mode styling no longer leaks into category mode: outline rows are left aligned again (no centred labels),
+  and category mode keeps its original glyph-free, evenly weighted rows.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added

@@ -60,6 +60,29 @@ test("sections are ordered by depth and painting order is stable", () => {
   );
 });
 
+test("nested frames are painted after their parent when the stage lists them first", () => {
+  // The inner frame appears at the top level before the section that contains
+  // it, exactly like Project Graph serializes overlapping groups. The outer
+  // frame's opaque fill must not cover the nested frame.
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        sectionNode("inner", [textNode("t")]),
+        sectionNode("outer", [sectionNode("inner", [textNode("t")])]),
+      ],
+    }),
+  );
+  const scene = buildScene(document);
+  assert.deepEqual(
+    scene.sections.map((section) => section.id),
+    ["outer", "inner"],
+  );
+  assert.deepEqual(
+    canvasOrder(scene).map((node) => node.id),
+    ["outer", "inner", "t"],
+  );
+});
+
 test("collapsed sections hide their descendants and their edges", () => {
   const document = parsePrg(
     buildPrg({
