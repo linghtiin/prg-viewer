@@ -197,28 +197,99 @@ test("edge cycles are broken and every node appears once", () => {
   assert.deepEqual(flatten(tree), ["a", "b", "c"]);
 });
 
-test("section containment wins over an edge into the same child", () => {
+test("a wrapped node keeps its tree parent through the frame", () => {
   const document = parsePrg(
     buildPrg({
-      stage: [textNode("a"), sectionNode("s", [textNode("b")]), lineEdge("e", "/0", "/1/children/0")],
+      stage: [
+        textNode("a"),
+        sectionNode("s", [textNode("b")]),
+        textNode("c"),
+        lineEdge("e1", "/0", "/1/children/0"),
+        lineEdge("e2", "/1/children/0", "/2"),
+      ],
     }),
   );
   const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a", "s"]);
-  assert.deepEqual(ids(tree[1]?.children ?? []), ["b"]);
-  assert.deepEqual(flatten(tree), ["a", "s", "b"]);
+  // The frame follows the node it wraps; the node and its subtree stay below it.
+  assert.deepEqual(ids(tree), ["a"]);
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["s"]);
+  assert.deepEqual(ids(tree[0]?.children[0]?.children ?? []), ["b"]);
+  assert.deepEqual(ids(tree[0]?.children[0]?.children[0]?.children ?? []), ["c"]);
+  assert.deepEqual(flatten(tree), ["a", "s", "b", "c"]);
 });
 
-test("edges never re-parent a section node", () => {
+test("a frame adopts the edge parent of a frame nested inside it", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        textNode("a"),
+        sectionNode("outer", [sectionNode("inner", [textNode("c")])]),
+        lineEdge("e", "/0", "/1/children/0/children/0"),
+      ],
+    }),
+  );
+  const tree = buildOutlineTree(document);
+  assert.deepEqual(ids(tree), ["a"]);
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["outer"]);
+  assert.deepEqual(ids(tree[0]?.children[0]?.children ?? []), ["inner"]);
+  assert.deepEqual(ids(tree[0]?.children[0]?.children[0]?.children ?? []), ["c"]);
+});
+
+test("an edge parents a frame that is not inside another frame", () => {
   const document = parsePrg(
     buildPrg({
       stage: [textNode("a"), sectionNode("s", []), lineEdge("e", "/0", "/1")],
     }),
   );
   const tree = buildOutlineTree(document);
-  assert.deepEqual(ids(tree), ["a", "s"]);
-  assert.deepEqual(ids(tree[0]?.children ?? []), []);
+  assert.deepEqual(ids(tree), ["a"]);
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["s"]);
   assert.deepEqual(flatten(tree), ["a", "s"]);
+});
+
+test("an edge into a contained frame does not pull it out of its parent", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        textNode("a"),
+        sectionNode("outer", [sectionNode("inner", [])]),
+        lineEdge("e", "/0", "/1/children/0"),
+      ],
+    }),
+  );
+  const tree = buildOutlineTree(document);
+  assert.deepEqual(ids(tree), ["a"]);
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["outer"]);
+  assert.deepEqual(ids(tree[0]?.children[0]?.children ?? []), ["inner"]);
+});
+
+test("an edge from inside a frame never parents the frame itself", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [sectionNode("s", [textNode("b")]), lineEdge("e", "/0/children/0", "/0")],
+    }),
+  );
+  const tree = buildOutlineTree(document);
+  assert.deepEqual(ids(tree), ["s"]);
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["b"]);
+  assert.deepEqual(flatten(tree), ["s", "b"]);
+});
+
+test("adopted frames keep the canvas reading order among their siblings", () => {
+  const document = parsePrg(
+    buildPrg({
+      stage: [
+        textNode("a"),
+        textNode("z", { collisionBox: collisionBox(0, 200, 100, 50) }),
+        sectionNode("s", [textNode("b")]),
+        lineEdge("e1", "/0", "/1"),
+        lineEdge("e2", "/0", "/2/children/0"),
+      ],
+    }),
+  );
+  const tree = buildOutlineTree(document);
+  assert.deepEqual(ids(tree), ["a"]);
+  assert.deepEqual(ids(tree[0]?.children ?? []), ["s", "z"]);
 });
 
 test("outlineAncestors returns the chain from the root to the parent", () => {

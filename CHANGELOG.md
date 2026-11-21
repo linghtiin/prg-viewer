@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Changed
+
+- Outline tree now keeps a wrapped node where it belongs in the graph. A group frame whose contents are connected
+  to the rest of the canvas follows that connection instead of becoming a root, and an edge may parent a frame
+  directly.
+- Outline tree rows distinguish group frames from plain nodes: frames get a square marker, an accent colour and a
+  heavier title (and an accessible "分组框：" label), so a frame and the node it wraps with the same name are no
+  longer indistinguishable.
+
 ### Fixed
 
 - Nested group frames are no longer hidden by their parent. A section is serialized both at the top level of the

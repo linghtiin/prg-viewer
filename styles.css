@@ -314,7 +314,9 @@
 /* Scoped above Obsidian's `button:not(.clickable-icon)` so list rows stay flat
    and compact instead of inheriting the default button chrome. */
 .prg-viewer-panel .prg-viewer-outline-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   width: 100%;
   height: auto;
   text-align: left;
@@ -325,10 +327,39 @@
   box-shadow: none;
   color: var(--text-normal);
   cursor: pointer;
-  white-space: nowrap;
+  overflow: hidden;
+  font-size: var(--font-ui-small);
+}
+
+/* Frames and plain nodes share the tree; the square marker plus a heavier
+   label keeps a group frame recognisable without costing a second line. */
+.prg-viewer-panel .prg-viewer-outline-kind {
+  flex: 0 0 11px;
+  width: 11px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.prg-viewer-panel .prg-viewer-outline-item.is-frame {
+  font-weight: 600;
+}
+
+.prg-viewer-panel .prg-viewer-outline-item.is-frame .prg-viewer-outline-kind {
+  color: var(--interactive-accent);
+  font-size: 10px;
+}
+
+.prg-viewer-panel .prg-viewer-outline-item.is-selected .prg-viewer-outline-kind {
+  color: var(--text-on-accent);
+}
+
+.prg-viewer-outline-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: var(--font-ui-small);
+  white-space: nowrap;
 }
 
 .prg-viewer-panel .prg-viewer-outline-item:hover {

@@ -55,13 +55,17 @@ export interface OutlineTreeNode {
 /**
  * Builds a forest from the document's two hierarchy sources.
  *
- * Sections carry explicit containment (`children`) and win over everything else.
- * Files authored as mind maps have no sections at all; their hierarchy lives in
- * directed edges, so an edge `from → to` parents `to` under `from` when nothing
- * else claimed it yet. The first declaration wins, and an edge that would close
- * a cycle is ignored, so every node still appears exactly once. Section nodes
- * are only nested through containment, never through an edge. Connection-derived
- * siblings are ordered by canvas position so the outline reads like the graph.
+ * Sections carry explicit containment (`children`): a frame owns the entities
+ * drawn inside it, and those entries become its children. Files authored as mind
+ * maps keep their hierarchy in directed edges, so an edge `from → to` parents
+ * `to` under `from` when nothing claimed it yet. A frame takes part in that
+ * hierarchy like any other entry: an edge may point at the frame, and a frame
+ * whose contents already hang off an edge parent adopts that parent. Without
+ * that rule a wrapped node would be re-rooted behind its frame and lose the
+ * place it has in the graph. The first declaration wins, and an edge that would
+ * close a cycle is ignored, so every node still appears exactly once.
+ * Connection-derived siblings are ordered by canvas position so the outline
+ * reads like the graph.
  */
 export function buildOutlineTree(document: PrgDocument): OutlineTreeNode[] {
   const entries: OutlineTreeNode[] = [];
@@ -85,22 +89,73 @@ export function buildOutlineTree(document: PrgDocument): OutlineTreeNode[] {
     if (declared) declaredChildren.add(childId);
   };
 
+  // Containment first: a frame owns the entities drawn inside it.
   for (const entry of entries) {
     if (entry.node.kind !== "section") continue;
     for (const childId of entry.node.children) attach(entry, childId, true);
   }
 
+  // Directed edges organise everything the frames did not claim.
+  const edgeParents = new Map<string, string[]>();
+  for (const edge of document.edges) {
+    if (edge.from === edge.to || !byId.has(edge.from) || !byId.has(edge.to)) continue;
+    const parents = edgeParents.get(edge.to);
+    if (parents) parents.push(edge.from);
+    else edgeParents.set(edge.to, [edge.from]);
+  }
   for (const edge of document.edges) {
     if (edge.from === edge.to) continue;
     const parent = byId.get(edge.from);
     const child = byId.get(edge.to);
     if (!parent || !child) continue;
-    if (child.node.kind === "section") continue;
     attach(parent, child.node.id, false);
+  }
+
+  // A parentless frame inherits the edge parent of its contents, so a wrapped
+  // node keeps its place in the tree and the frame becomes an extra layer.
+  for (const entry of entries) {
+    if (entry.node.kind !== "section" || parentOf.has(entry.node.id)) continue;
+    const anchor = frameAnchor(entry, edgeParents, byId);
+    if (anchor) attach(anchor, entry.node.id, false);
   }
 
   sortInferredChildren(entries, declaredChildren);
   return entries.filter((entry) => !parentOf.has(entry.node.id));
+}
+
+/**
+ * Finds the edge parent a parentless frame should follow.
+ *
+ * The frame's contents are searched breadth first in display order, so the frame
+ * follows the first contained entry that is attached elsewhere. Parents inside
+ * the frame belong to the frame itself and are ignored; this also keeps the
+ * attachment acyclic because the chosen parent is outside the frame's subtree.
+ */
+function frameAnchor(
+  frame: OutlineTreeNode,
+  edgeParents: ReadonlyMap<string, readonly string[]>,
+  byId: ReadonlyMap<string, OutlineTreeNode>,
+): OutlineTreeNode | null {
+  const inside = new Set<string>([frame.node.id]);
+  const collect = [...frame.children];
+  while (collect.length > 0) {
+    const entry = collect.shift();
+    if (!entry) break;
+    inside.add(entry.node.id);
+    collect.push(...entry.children);
+  }
+
+  const visit = [...frame.children];
+  while (visit.length > 0) {
+    const entry = visit.shift();
+    if (!entry) break;
+    for (const parentId of edgeParents.get(entry.node.id) ?? []) {
+      const parent = byId.get(parentId);
+      if (parent && !inside.has(parent.node.id)) return parent;
+    }
+    visit.push(...entry.children);
+  }
+  return null;
 }
 
 /**
@@ -278,8 +333,23 @@ function outlineItem(
   button.className = "prg-viewer-outline-item";
   button.dataset.outlineId = node.id;
   button.dataset.outlineRole = "item";
+  button.dataset.outlineKind = node.kind;
   const label = nodeLabel(node);
-  button.textContent = truncate(label);
+  const isFrame = node.kind === "section";
+  if (isFrame) {
+    button.classList.add("is-frame");
+    button.setAttribute("aria-label", `分组框：${label}`);
+  }
+
+  const marker = ownerDocument.createElement("span");
+  marker.className = "prg-viewer-outline-kind";
+  marker.textContent = isFrame ? "▣" : "•";
+  marker.setAttribute("aria-hidden", "true");
+  const text = ownerDocument.createElement("span");
+  text.className = "prg-viewer-outline-label";
+  text.textContent = truncate(label);
+  button.append(marker, text);
+
   button.title = label;
   if (selected.has(node.id)) button.classList.add("is-selected");
   button.addEventListener("click", () => select(node.id));
