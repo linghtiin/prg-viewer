@@ -2,6 +2,7 @@ import type { PrgEdge, PrgNode, Rgba, Rect } from "../format/types.ts";
 import type { Camera, Viewport } from "../scene/camera.ts";
 import { invertForContrast, rgbaToCss } from "../scene/color.ts";
 import { parseCssColor } from "../scene/css-color.ts";
+import { edgeMidpoint } from "../scene/edge-geometry.ts";
 import { fontSpecOf, fitTextRect, layoutTextNode, type TextLayout } from "../scene/text-layout.ts";
 import type { TextMeasurer } from "../scene/text-measurer.ts";
 import type { Scene, SceneEdge } from "../scene/scene.ts";
@@ -299,7 +300,10 @@ export class CanvasRenderer {
       drawArrow(context, geometry.end, geometry.control2, stroke, ARROW_SIZE);
     }
     if (edge.text.length > 0) {
-      this.drawEdgeLabel(edge, geometry.control1.x, geometry.control1.y);
+      // The label follows the drawn curve; a control point is pushed outward
+      // along the edge normal and can sit far away from it (e.g. right → left).
+      const anchor = edgeMidpoint(geometry);
+      this.drawEdgeLabel(edge, anchor.x, anchor.y);
     }
     context.restore();
   }

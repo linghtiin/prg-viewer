@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Fixed
+
+- Edge labels are anchored on the drawn curve (Bézier t = 0.5) instead of the first control point, so a
+  label on a bent edge no longer floats beside the source node while the line runs the other way.
+
 ## [0.4.0] - 2026-11-22
 
 ### Changed

@@ -38,6 +38,22 @@ test("horizontal edge between right and left centres gets symmetric control poin
   assert.deepEqual(edgeMidpoint(geometry), { x: 200, y: 25 });
 });
 
+test("labels anchor on the curve when the endpoints face away from each other", () => {
+  // Reproduces a right-edge → left-edge edge whose target sits below the
+  // source: the outward normal pushes the first control point far to the right
+  // of the curve. Labels must follow the curve, not that control point.
+  const source = { x: 0, y: 0, width: 113.23, height: 76 };
+  const target = { x: -0.37, y: 144, width: 109.75, height: 76 };
+  const geometry = computeEdgeGeometry(source, target, { x: 0.99, y: 0.5 }, { x: 0.01, y: 0.5 });
+  const midpoint = edgeMidpoint(geometry);
+
+  assert.ok(geometry.control1.x > source.x + source.width);
+  assert.ok(Math.hypot(midpoint.x - geometry.control1.x, midpoint.y - geometry.control1.y) > 100);
+  assert.ok(midpoint.y > source.y + source.height && midpoint.y < target.y);
+  assert.ok(midpoint.x > source.x && midpoint.x < source.x + source.width);
+  assert.deepEqual(midpoint, sampleEdge(geometry, 20)[10]);
+});
+
 test("centre rates clip the centre line against the rectangle boundary", () => {
   const geometry = computeEdgeGeometry(left, right, { x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 });
   assert.deepEqual(geometry.start, { x: 100, y: 25 });
