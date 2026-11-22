@@ -29,6 +29,7 @@ jobs:
 
       - run: pnpm verify
       - run: pnpm inspect fixtures/sample.prg
+      - run: pnpm package:release
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -36,3 +37,4 @@ jobs:
             main.js
             manifest.json
             styles.css
+            dist/prg-viewer.zip

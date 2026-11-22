@@ -89,6 +89,6 @@ src/main.ts   插件入口
 
 功能分支只维护 `CHANGELOG.md` 的 `Unreleased`；发版时从 `master` 切出 `chore/release-x.y.z`，
 运行 `pnpm bump x.y.z`（提升 CHANGELOG 并同步三个版本文件），再 `pnpm check:version && pnpm verify`。
-合并后使用**裸版本号** `x.y.z` 打 tag 并推送，GitHub release 才会构建三个资产。
+合并后使用**裸版本号** `x.y.z` 打 tag 并推送，GitHub release 才会构建四个资产（三个文件 + 同名 zip）。
 
 完整的版本策略、文件矩阵、检查表与回滚方式见 [docs/releasing.md](docs/releasing.md)。

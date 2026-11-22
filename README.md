@@ -30,8 +30,10 @@ LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩�
 
 ### 手动安装
 
-1. 从本仓库的 [Releases](../../releases) 下载 `main.js`、`manifest.json`、`styles.css`。
-2. 在库的配置目录中创建插件文件夹 `<库>/.obsidian/plugins/prg-viewer/`，把三个文件放进去。
+1. 从本仓库的 [Releases](../../releases) 下载 `prg-viewer.zip`；也可以分别下载
+   `main.js`、`manifest.json`、`styles.css`。
+2. 在库的配置目录中创建插件文件夹 `<库>/.obsidian/plugins/prg-viewer/`，把压缩包里的三个文件
+   解压到该目录（三个文件必须直接位于插件文件夹内）。
 3. 重新加载 Obsidian，在 **设置 → 第三方插件** 中启用 **Project Graph Viewer**。
 
 > 插件文件夹必须命名为 `prg-viewer`，与 `manifest.json` 的 `id` 一致。使用自定义配置目录时按实际路径放置。

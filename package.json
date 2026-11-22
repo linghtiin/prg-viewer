@@ -24,6 +24,7 @@
     "fixture": "node --experimental-strip-types scripts/make-fixture.ts",
     "bump": "node --experimental-strip-types scripts/bump-version.ts",
     "check:version": "node --experimental-strip-types scripts/check-version.ts",
+    "package:release": "node --experimental-strip-types scripts/package-release.ts",
     "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
