@@ -1,6 +1,6 @@
 {
   "name": "prg-viewer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Open Project Graph .prg canvas files in a read-only viewer with nodes, edges, images, LaTeX and sections.",
   "type": "module",

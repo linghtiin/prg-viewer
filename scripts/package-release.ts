@@ -1,6 +1,6 @@
 /**
  * Builds the single-file release archive from the three root artifacts and
- * writes `dist/prg-viewer.zip`. CI runs it after `pnpm verify` (which builds
+ * writes `dist/project-graph-viewer.zip`. CI runs it after `pnpm verify` (which builds
  * `main.js`); locally run `pnpm build` first.
  *
  * Usage:

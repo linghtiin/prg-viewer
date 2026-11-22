@@ -44,7 +44,7 @@ const esbuildBin = require.resolve("esbuild/bin/esbuild");
 const result = spawnSync(process.execPath, [esbuildBin, ...args], { stdio: "inherit" });
 
 if (result.error) {
-  console.error("[prg-viewer] failed to start esbuild:", result.error);
+  console.error("[project-graph-viewer] failed to start esbuild:", result.error);
   process.exit(1);
 }
 process.exit(result.status ?? 1);

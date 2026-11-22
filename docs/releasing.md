@@ -68,7 +68,7 @@
    ```
 
 7. GitHub Actions（`.github/workflows/release.yml`）构建并上传四个资产：`main.js`、`manifest.json`、
-   `styles.css`，以及把这三者放在压缩包根目录的 `prg-viewer.zip`；确认 release 的 tag 与
+   `styles.css`，以及把这三者放在压缩包根目录的 `project-graph-viewer.zip`；确认 release 的 tag 与
    manifest 版本一致、资产齐全。
 8. Obsidian 安装器按 `manifest.json` 的版本查找同名 release，因此**推 tag 才算发版**；只改版本号
    不推 tag，用户端仍是旧版本。
@@ -78,9 +78,9 @@
 发布页同时提供单文件压缩包，用户可以只下载一个文件：
 
 - `pnpm package:release` 把 `main.js`、`manifest.json`、`styles.css` 按根目录结构打进
-  `dist/prg-viewer.zip`（`dist/` 已被忽略，不会进仓库）。
+  `dist/project-graph-viewer.zip`（`dist/` 已被忽略，不会进仓库）。
 - 该命令不负责构建：先在本地 `pnpm build`，或直接跑 `pnpm verify`（CI 在它之后执行本命令）。
-- 压缩包内的三个文件必须直接在根目录；解压到 `<库>/.obsidian/plugins/prg-viewer/` 即可。
+- 压缩包内的三个文件必须直接在根目录；解压到 `<库>/.obsidian/plugins/project-graph-viewer/` 即可。
 - Gitea 不自动产出 release，手动发布时同样上传三个文件与这个 zip，两者由同一脚本产出。
 
 ### tag 规则

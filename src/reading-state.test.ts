@@ -107,23 +107,23 @@ test("mergeCameraStates prefers the state file and keeps legacy-only paths", () 
 test("readingStatePath points inside the plugin folder", () => {
   assert.equal(READING_STATE_FILE, "reading-state.json");
   assert.equal(
-    readingStatePath(".obsidian", ".obsidian/plugins/prg-viewer", "prg-viewer"),
-    `.obsidian/plugins/prg-viewer/${READING_STATE_FILE}`,
+    readingStatePath(".obsidian", ".obsidian/plugins/project-graph-viewer", "project-graph-viewer"),
+    `.obsidian/plugins/project-graph-viewer/${READING_STATE_FILE}`,
   );
   assert.equal(
-    readingStatePath(".obsidian", ".obsidian/plugins/prg-viewer/", "prg-viewer"),
-    `.obsidian/plugins/prg-viewer/${READING_STATE_FILE}`,
+    readingStatePath(".obsidian", ".obsidian/plugins/project-graph-viewer/", "project-graph-viewer"),
+    `.obsidian/plugins/project-graph-viewer/${READING_STATE_FILE}`,
   );
   assert.equal(
-    readingStatePath("my-config", undefined, "prg-viewer"),
-    `my-config/plugins/prg-viewer/${READING_STATE_FILE}`,
+    readingStatePath("my-config", undefined, "project-graph-viewer"),
+    `my-config/plugins/project-graph-viewer/${READING_STATE_FILE}`,
   );
   assert.equal(
-    readingStatePath("my-config", "", "prg-viewer"),
-    `my-config/plugins/prg-viewer/${READING_STATE_FILE}`,
+    readingStatePath("my-config", "", "project-graph-viewer"),
+    `my-config/plugins/project-graph-viewer/${READING_STATE_FILE}`,
   );
   assert.equal(
-    readingStatePath("config", ".obsidian\\plugins\\prg-viewer\\", "id"),
-    ".obsidian\\plugins\\prg-viewer/reading-state.json",
+    readingStatePath("config", ".obsidian\\plugins\\project-graph-viewer\\", "id"),
+    ".obsidian\\plugins\\project-graph-viewer/reading-state.json",
   );
 });

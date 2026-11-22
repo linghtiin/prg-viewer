@@ -6,9 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-22
+
 ### Changed
 
-- Release pages also publish `prg-viewer.zip`, a single archive holding `main.js`, `manifest.json`
+- Plugin id is now `project-graph-viewer`, and the plugin is desktop-only (`isDesktopOnly: true`) because
+  "Open in Project Graph" relies on the OS handler through Node's `child_process`.
+- Upgrade note: the plugin folder, `data.json` and `reading-state.json` follow the new id. Settings and
+  per-file cameras stored under the old `prg-viewer` folder are not migrated — reinstall into
+  `.obsidian/plugins/project-graph-viewer/` and re-apply settings.
+- Release pages also publish `project-graph-viewer.zip`, a single archive holding `main.js`, `manifest.json`
   and `styles.css` at its root, next to the three individual files.
 
 ## [0.3.0] - 2026-11-22

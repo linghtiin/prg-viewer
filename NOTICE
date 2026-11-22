@@ -1,5 +1,5 @@
-prg-viewer
-==========
+Project Graph Viewer
+====================
 
 This plugin reads files in the PRG container format produced by Project Graph
 (https://graphif.dev, https://github.com/graphif/project-graph).

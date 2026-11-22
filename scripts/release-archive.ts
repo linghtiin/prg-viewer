@@ -9,7 +9,7 @@ import { zipSync } from "fflate";
 export const RELEASE_ARTIFACTS = ["main.js", "manifest.json", "styles.css"] as const;
 
 /** Asset name on the release page; the release tag already carries the version. */
-export const RELEASE_ARCHIVE_NAME = "prg-viewer.zip";
+export const RELEASE_ARCHIVE_NAME = "project-graph-viewer.zip";
 
 /** One artifact read from the working tree. */
 export interface ReleaseFile {

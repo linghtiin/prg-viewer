@@ -87,7 +87,7 @@ vault.readBinary(file)
 
 ## 状态持久化
 
-设置与阅读状态分开保存在插件目录（`<配置目录>/plugins/prg-viewer/`），不触碰 vault 笔记或 `.prg` 文件：
+设置与阅读状态分开保存在插件目录（`<配置目录>/plugins/project-graph-viewer/`），不触碰 vault 笔记或 `.prg` 文件：
 
 | 文件                 | 内容                   | 写入时机                           |
 | -------------------- | ---------------------- | ---------------------------------- |
@@ -124,7 +124,7 @@ vault.readBinary(file)
   才把 `data.json` 重写为仅含 `settings`，因此升级只会产生一次 `data.json` 变更。
 - `reading-state.json` 缺失或损坏时按空状态处理；写入失败只退化为“不记忆视图”，不影响阅读。
 - `rememberCameraPerFile` 关闭时不写入阅读状态。
-- 建议把 `.obsidian/plugins/prg-viewer/reading-state.json` 加入库仓库的 `.gitignore`：阅读状态变化频繁，
+- 建议把 `.obsidian/plugins/project-graph-viewer/reading-state.json` 加入库仓库的 `.gitignore`：阅读状态变化频繁，
   而设置仍可被版本管理追踪。
 
 ## 测试边界
