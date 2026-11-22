@@ -67,10 +67,21 @@
    git push origin x.y.z
    ```
 
-7. GitHub Actions（`.github/workflows/release.yml`）构建并上传 `main.js`、`manifest.json`、
-   `styles.css` 三个资产；确认 release 的 tag 与 manifest 版本一致、资产齐全。
+7. GitHub Actions（`.github/workflows/release.yml`）构建并上传四个资产：`main.js`、`manifest.json`、
+   `styles.css`，以及把这三者放在压缩包根目录的 `prg-viewer.zip`；确认 release 的 tag 与
+   manifest 版本一致、资产齐全。
 8. Obsidian 安装器按 `manifest.json` 的版本查找同名 release，因此**推 tag 才算发版**；只改版本号
    不推 tag，用户端仍是旧版本。
+
+### 发布压缩包
+
+发布页同时提供单文件压缩包，用户可以只下载一个文件：
+
+- `pnpm package:release` 把 `main.js`、`manifest.json`、`styles.css` 按根目录结构打进
+  `dist/prg-viewer.zip`（`dist/` 已被忽略，不会进仓库）。
+- 该命令不负责构建：先在本地 `pnpm build`，或直接跑 `pnpm verify`（CI 在它之后执行本命令）。
+- 压缩包内的三个文件必须直接在根目录；解压到 `<库>/.obsidian/plugins/prg-viewer/` 即可。
+- Gitea 不自动产出 release，手动发布时同样上传三个文件与这个 zip，两者由同一脚本产出。
 
 ### tag 规则
 
@@ -100,7 +111,7 @@
 - [ ] `pnpm check:version` 与 `pnpm check:version --tag x.y.z` 通过
 - [ ] `pnpm verify`、`pnpm test:coverage` 通过
 - [ ] tag 打在 `master` 的合并提交上，名字为裸版本号
-- [ ] GitHub release 含三个资产，manifest 版本与 tag 一致
+- [ ] GitHub release 含四个资产（三个文件 + 同名 zip），manifest 版本与 tag 一致
 - [ ] 本地安装该 release 后 Obsidian 显示新版本号
 - [ ] 上架社区时按官方提交页更新插件信息（人工）
 
@@ -119,5 +130,5 @@
 
 - `ci.yml` 在 push / PR 上运行 `pnpm check:version` 与完整质量门禁。
 - `release.yml` 由裸版本 tag 触发，先执行 `check-version.ts --tag "$GITHUB_REF_NAME"`，再
-  `pnpm verify`、`pnpm inspect fixtures/sample.prg`，最后上传三个资产。
+  `pnpm verify`、`pnpm inspect fixtures/sample.prg`、`pnpm package:release`，最后上传四个资产。
 - 任何一项失败都不会产出 release；修正后按“失败与回滚”处理。

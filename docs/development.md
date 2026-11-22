@@ -44,6 +44,7 @@ pnpm verify        # 提交前必须全绿
 | `pnpm lint`               | ESLint                                                   |
 | `pnpm format`             | Prettier 写入                                            |
 | `pnpm check:version`      | package / manifest / versions / CHANGELOG 一致性         |
+| `pnpm package:release`    | 打包发布 zip（`dist/prg-viewer.zip`，需先构建）          |
 | `pnpm inspect <file.prg>` | 解码任意 `.prg` 并输出摘要或 JSON                        |
 | `pnpm fixture`            | 重新生成 `fixtures/sample.prg`（合成样本）               |
 

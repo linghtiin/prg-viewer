@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Changed
+
+- Release pages also publish `prg-viewer.zip`, a single archive holding `main.js`, `manifest.json`
+  and `styles.css` at its root, next to the three individual files.
+
 ## [0.3.0] - 2026-11-22
 
 ### Changed
