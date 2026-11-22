@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-22
+
 ### Fixed
 
 - Edge labels are anchored on the drawn curve (Bézier t = 0.5) instead of the first control point, so a
