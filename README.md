@@ -6,20 +6,46 @@ A read-only Obsidian plugin that renders Project Graph `.prg` canvases — nodes
 LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩放、搜索、大纲与深链。
 
 > 只读查看器：不会修改 `.prg` 文件。编辑请回到 Project Graph。
+>
+> 非官方插件，与 Project Graph 作者无关联；仅支持 Obsidian 桌面端（`isDesktopOnly`）。
+
+## 演示
+
+打开 `.prg` 是一个独立的只读预览标签页：左侧画布支持滚轮缩放、拖动平移与适配视图，右侧大纲与详情
+面板各自滚动，互不挤占：
+
+<img width="760" src="assets/demo-open.webp" alt="打开 .prg：左侧画布、右侧大纲与详情面板">
+
+大纲有「树 / 分类」两种视图。树按层级来源分成 `包含` 与 `连接` 两组，分类按节点类型平铺；两者都跟随
+Obsidian 的明暗主题（下图为浅色主题 + 分类视图）：
+
+<img width="760" src="assets/demo-modes.webp" alt="大纲的分类视图与浅色主题">
 
 ## 功能
 
-- 在文件列表中双击 `.prg`，或执行命令 **Project Graph Viewer: 打开 Project Graph 文件…**
-- 画布：拖动平移、滚轮缩放（`Ctrl/⌘ + 滚轮` 平移，可在设置中互换）、双击节点聚焦、点击空白取消选择
-- 搜索框实时定位节点（`Enter` 循环跳转）
-- 右侧大纲支持「节点树」与「按类型」两种视图。树模式按层级来源分成 `包含` 与 `连接` 两组：`包含` 是包含关系树（不在其他框内的每个分组框都是根，框内实体挂在它下面），`连接` 是连线树（层级只由连线方向决定，没有入边的节点或框都是根，包括从框连出去的边）。被框住的节点不会被改变连线层级，分组框只是在 `包含` 树里展开自己的内容，因此同一个框可以在两组里各出现一次、各显示各自的孩子；分组框的折叠角标带方框并使用强调色（无子级的框保留空方框），可折叠任意分支，点击即定位（同时是无障碍入口）；默认宽度可在设置中调整，打开后拖动仅影响当前会话
-- 画布与大纲共用方向键导航：上下切换节点，左右在父级/子级间移动
-- 详情面板区分「节点自身文本」与「附加文本」，并显示 uuid、位置与图片预览；详情与大纲分区滚动，详情默认高度可在设置中调整
-- 图片附件（`attachments/`）与 LaTeX 公式（KaTeX MathML，离线可用）
-- 分组框：支持嵌套与折叠状态
-- 深链：复制 `prg://` 链接（文件/节点/当前视野），或在 Project Graph 中打开
-- 跟随 Obsidian 主题（浅色/深色），可开启网格背景
-- 每个文件记住缩放与位置（写入插件目录的 `reading-state.json`，不修改 `.prg` 文件）
+- 在文件列表双击 `.prg`，显示为独立的只读预览标签页；命令面板、文件右键菜单与工具条也能打开。
+- 画布：拖动平移、滚轮缩放（`Ctrl/⌘ + 滚轮` 平移，可在设置中互换）、双击节点聚焦、点击空白取消选择。
+- 搜索框实时定位节点（`Enter` 循环跳转）。
+- 右侧大纲支持「树 / 分类」两种视图。树按层级来源分成 `包含`（分组框嵌套）与 `连接`（连线方向）两组，
+  同一分组框可以在两组里各出现一次；分组框的折叠角标带方框与强调色，可折叠任意分支，点击即定位（同时
+  是无障碍入口）；大纲默认宽度、详情默认高度与默认视图都可在设置中调整。
+- 画布与大纲共用方向键导航：上下切换节点，左右在父级 / 子级间移动。
+- 详情面板区分「节点自身文本」与「附加文本」，显示 uuid、位置与图片预览；详情固定在侧栏下方独立滚动。
+- 图片附件（`attachments/`）与 LaTeX 公式（KaTeX MathML，离线可用）。
+- 跟随 Obsidian 主题（浅色 / 深色），可开启网格背景。
+- 每个文件记住缩放与位置（写入插件目录的 `reading-state.json`，不修改 `.prg` 文件）。
+- 深链：复制 `prg://` 文件 / 节点 / 视野链接，或在 Project Graph 中打开。
+
+渲染的对象类型：
+
+- `TextNode`
+- `ImageNode`
+- `LatexNode`
+- `Section`
+- `LineEdge`（含自环）
+
+其余类型（`PenStroke`、`SvgNode`、`UrlNode`、`MediaNode`、`ReferenceBlockNode` 与未来版本的未知类型）
+显示为占位框，保留位置与类型名。
 
 ## 安装
 
@@ -30,13 +56,14 @@ LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩�
 
 ### 手动安装
 
-1. 从本仓库的 [Releases](../../releases) 下载 `prg-viewer.zip`；也可以分别下载
+1. 从本仓库的 [Releases](../../releases) 下载 `project-graph-viewer.zip`；也可以分别下载
    `main.js`、`manifest.json`、`styles.css`。
-2. 在库的配置目录中创建插件文件夹 `<库>/.obsidian/plugins/prg-viewer/`，把压缩包里的三个文件
+2. 在库的配置目录中创建插件文件夹 `<库>/.obsidian/plugins/project-graph-viewer/`，把压缩包里的三个文件
    解压到该目录（三个文件必须直接位于插件文件夹内）。
 3. 重新加载 Obsidian，在 **设置 → 第三方插件** 中启用 **Project Graph Viewer**。
 
-> 插件文件夹必须命名为 `prg-viewer`，与 `manifest.json` 的 `id` 一致。使用自定义配置目录时按实际路径放置。
+> 插件文件夹必须命名为 `project-graph-viewer`，与 `manifest.json` 的 `id` 一致。使用自定义配置目录时按实际路径放置。
+> 本插件为桌面端插件（`isDesktopOnly: true`），移动端无法安装。
 
 从源码构建并安装到测试库的步骤见 [docs/development.md](docs/development.md)。
 
@@ -73,7 +100,7 @@ LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩�
 
 ### 配置与阅读状态
 
-插件目录（`<库>/.obsidian/plugins/prg-viewer/`）下有两个文件：
+插件目录（`<库>/.obsidian/plugins/project-graph-viewer/`）下有两个文件：
 
 | 文件                 | 内容                     | 写入时机                     |
 | -------------------- | ------------------------ | ---------------------------- |
@@ -83,7 +110,7 @@ LaTeX 公式与分组框都会按原作者排版渲染，并支持平移、缩�
 `.prg` 文件本身始终只读。若库用 Git 管理，可以只忽略阅读状态，让设置仍可被追踪：
 
 ```gitignore
-.obsidian/plugins/prg-viewer/reading-state.json
+.obsidian/plugins/project-graph-viewer/reading-state.json
 ```
 
 （使用自定义配置目录时按实际路径调整。）旧版本把阅读状态存在 `data.json` 的 `cameras` 字段里；升级后

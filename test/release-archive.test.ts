@@ -14,7 +14,7 @@ function releaseFiles(): { name: string; data: Uint8Array }[] {
 }
 
 test("the release asset is one zip named after the plugin", () => {
-  assert.equal(RELEASE_ARCHIVE_NAME, "prg-viewer.zip");
+  assert.equal(RELEASE_ARCHIVE_NAME, "project-graph-viewer.zip");
 });
 
 test("buildReleaseArchive puts exactly the three artifacts at the archive root", () => {

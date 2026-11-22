@@ -24,7 +24,7 @@ pnpm verify        # 提交前必须全绿
    - 脚本：`powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:\path\to\vault"`
      （`C:\path\to\vault` 是占位路径，换成你的测试库；加 `-WhatIf` 可预览）
    - 手动：把 `main.js`、`manifest.json`、`styles.css` 复制到
-     `<库>/.obsidian/plugins/prg-viewer/`
+     `<库>/.obsidian/plugins/project-graph-viewer/`
 3. 在 Obsidian 中重新加载插件（或使用 Hot Reload 类插件）。
 
 脚本只复制三个产物，不会修改库中的笔记或 `.prg` 文件。
@@ -33,20 +33,20 @@ pnpm verify        # 提交前必须全绿
 
 ## 命令
 
-| 命令                      | 作用                                                     |
-| ------------------------- | -------------------------------------------------------- |
-| `pnpm dev`                | esbuild watch 构建                                       |
-| `pnpm build`              | 一次性构建 `main.js`                                     |
-| `pnpm verify`             | format + lint + typecheck + check:version + test + build |
-| `pnpm test`               | 单元测试（Node 内置测试运行器）                          |
-| `pnpm test:coverage`      | 覆盖率与门槛检查                                         |
-| `pnpm typecheck`          | `tsc --noEmit`                                           |
-| `pnpm lint`               | ESLint                                                   |
-| `pnpm format`             | Prettier 写入                                            |
-| `pnpm check:version`      | package / manifest / versions / CHANGELOG 一致性         |
-| `pnpm package:release`    | 打包发布 zip（`dist/prg-viewer.zip`，需先构建）          |
-| `pnpm inspect <file.prg>` | 解码任意 `.prg` 并输出摘要或 JSON                        |
-| `pnpm fixture`            | 重新生成 `fixtures/sample.prg`（合成样本）               |
+| 命令                      | 作用                                                      |
+| ------------------------- | --------------------------------------------------------- |
+| `pnpm dev`                | esbuild watch 构建                                        |
+| `pnpm build`              | 一次性构建 `main.js`                                      |
+| `pnpm verify`             | format + lint + typecheck + check:version + test + build  |
+| `pnpm test`               | 单元测试（Node 内置测试运行器）                           |
+| `pnpm test:coverage`      | 覆盖率与门槛检查                                          |
+| `pnpm typecheck`          | `tsc --noEmit`                                            |
+| `pnpm lint`               | ESLint                                                    |
+| `pnpm format`             | Prettier 写入                                             |
+| `pnpm check:version`      | package / manifest / versions / CHANGELOG 一致性          |
+| `pnpm package:release`    | 打包发布 zip（`dist/project-graph-viewer.zip`，需先构建） |
+| `pnpm inspect <file.prg>` | 解码任意 `.prg` 并输出摘要或 JSON                         |
+| `pnpm fixture`            | 重新生成 `fixtures/sample.prg`（合成样本）                |
 
 发版命令（`pnpm bump`、打 tag）见 [releasing.md](releasing.md)。
 

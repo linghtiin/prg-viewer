@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   校验目标确实是 Obsidian 库（存在 .obsidian 目录），再复制 main.js、manifest.json、styles.css
-  到 <vault>/.obsidian/plugins/prg-viewer/。不会修改库中的笔记或 .prg 文件。
+  到 <vault>/.obsidian/plugins/project-graph-viewer/。不会修改库中的笔记或 .prg 文件。
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/install-to-vault.ps1 -Vault "C:\path\to\vault"
@@ -18,7 +18,7 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$Vault,
 
-  [string]$PluginFolder = "prg-viewer"
+  [string]$PluginFolder = "project-graph-viewer"
 )
 
 $ErrorActionPreference = "Stop"

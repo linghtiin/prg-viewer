@@ -2,7 +2,7 @@
 
 export const VIEW_TYPE_PRG = "prg-view";
 export const PRG_EXTENSION = "prg";
-export const PLUGIN_ID = "prg-viewer";
+export const PLUGIN_ID = "project-graph-viewer";
 
 /** Project Graph renders text at `FONT_SIZE * 2^(fontScaleLevel / 2)`. */
 export const FONT_SIZE = 32;
