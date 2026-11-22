@@ -34,6 +34,9 @@ pnpm inspect fixtures/sample.prg --json
 
 这些差异都属于表现层，不影响文件读取；解析层保证"所见即文件内容"。
 
+连线标签锚在绘制曲线的 t = 0.5 中点，与上游贝塞尔渲染器（`SymmetryCurveEdgeRenderer.renderText`）一致，
+因此弯曲连线的文字会沿曲线移动，不会停在控制点旁；自环（本插件用贝塞尔环而非上游圆弧）同样锚在曲线中点。
+
 ## 版本策略
 
 - PRG major ≤ 2：完整解析。
